@@ -1,127 +1,171 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { supabase } from '../../lib/supabase';
 
 export type UserRole = 'visitor' | 'user' | 'admin';
 
 export interface User {
-  id: string;
-  name: string;
-  email: string;
-  role: UserRole;
-  avatar?: string;
-  bio?: string;
+id: string;
+name: string;
+email: string;
+role: UserRole;
+avatar?: string;
+bio?: string;
 }
 
 interface AuthContextType {
-  user: User | null;
-  isAuthenticated: boolean;
-  isVisitor: boolean;
-  login: (email: string, password: string) => Promise<void>;
-  register: (name: string, email: string, password: string) => Promise<void>;
-  logout: () => void;
-  continueAsVisitor: () => void;
-  updateProfile: (data: Partial<User>) => void;
-  requireAuth: () => boolean;
+user: User | null;
+isAuthenticated: boolean;
+isVisitor: boolean;
+login: (email: string, password: string) => Promise<void>;
+register: (name: string, email: string, password: string) => Promise<void>;
+logout: () => Promise<void>;
+continueAsVisitor: () => void;
+updateProfile: (data: Partial<User>) => void;
+requireAuth: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
-  const [isVisitor, setIsVisitor] = useState(false);
+const [user, setUser] = useState<User | null>(null);
+const [isVisitor, setIsVisitor] = useState(false);
 
-  useEffect(() => {
-    // Cargar sesión del localStorage
-    const savedUser = localStorage.getItem('hampiyura_user');
-    const savedVisitor = localStorage.getItem('hampiyura_visitor');
-    
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    } else if (savedVisitor === 'true') {
-      setIsVisitor(true);
-    }
-  }, []);
+useEffect(() => {
+const getSession = async () => {
+const { data } = await supabase.auth.getSession();
 
-  const login = async (email: string, password: string) => {
-    // Simulación de login - en producción sería una llamada a API
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    // Usuario de ejemplo
-    const mockUser: User = {
-      id: '1',
-      name: 'Usuario Demo',
-      email: email,
-      role: email.includes('admin') ? 'admin' : 'user',
-      avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop'
-    };
-    
-    setUser(mockUser);
-    setIsVisitor(false);
-    localStorage.setItem('hampiyura_user', JSON.stringify(mockUser));
-    localStorage.removeItem('hampiyura_visitor');
+
+  if (data.session?.user) {
+    const user = data.session.user;
+
+    const { data: perfil } = await supabase
+      .from('perfiles')
+      .select('*')
+      .eq('id', user.id)
+      .single();
+
+    setUser({
+      id: user.id,
+      name: perfil?.nombre || 'Usuario',
+      email: user.email || '',
+      role: perfil?.rol || 'user',
+    });
+  }
+};
+
+getSession();
+
+
+}, []);
+
+const login = async (email: string, password: string) => {
+const { data, error } = await supabase.auth.signInWithPassword({
+email,
+password,
+});
+
+
+if (error) {
+  console.error('LOGIN ERROR:', error.message);
+  return;
+}
+
+if (data.user) {
+  const { data: perfil } = await supabase
+    .from('perfiles')
+    .select('*')
+    .eq('id', data.user.id)
+    .single();
+
+  const userData: User = {
+    id: data.user.id,
+    name: perfil?.nombre || 'Usuario',
+    email: data.user.email || '',
+    role: perfil?.rol || 'user',
   };
 
-  const register = async (name: string, email: string, password: string) => {
-    // Simulación de registro
-    await new Promise(resolve => setTimeout(resolve, 500));
-    
-    const newUser: User = {
-      id: Date.now().toString(),
-      name,
-      email,
-      role: 'user',
-    };
-    
-    setUser(newUser);
-    setIsVisitor(false);
-    localStorage.setItem('hampiyura_user', JSON.stringify(newUser));
-    localStorage.removeItem('hampiyura_visitor');
-  };
+  setUser(userData);
+  setIsVisitor(false);
+}
 
-  const logout = () => {
-    setUser(null);
-    setIsVisitor(false);
-    localStorage.removeItem('hampiyura_user');
-    localStorage.removeItem('hampiyura_visitor');
-  };
 
-  const continueAsVisitor = () => {
-    setIsVisitor(true);
-    localStorage.setItem('hampiyura_visitor', 'true');
-  };
+};
 
-  const updateProfile = (data: Partial<User>) => {
-    if (user) {
-      const updatedUser = { ...user, ...data };
-      setUser(updatedUser);
-      localStorage.setItem('hampiyura_user', JSON.stringify(updatedUser));
-    }
-  };
+const register = async (name: string, email: string, password: string) => {
+const { data, error } = await supabase.auth.signUp({
+email,
+password,
+});
 
-  const requireAuth = () => {
-    return !!(user && user.role !== 'visitor');
-  };
+if (error) {
+  console.error('REGISTER ERROR:', error.message);
+  return;
+}
 
-  return (
-    <AuthContext.Provider value={{
-      user,
-      isAuthenticated: !!user,
-      isVisitor,
-      login,
-      register,
-      logout,
-      continueAsVisitor,
-      updateProfile,
-      requireAuth
-    }}>
-      {children}
-    </AuthContext.Provider>
-  );
+if (data.user) {
+  await supabase.from('perfiles').insert({
+    id: data.user.id,
+    nombre: name,
+    email: email,
+    rol: 'user',
+  });
+
+  setUser({
+    id: data.user.id,
+    name,
+    email,
+    role: 'user',
+  });
+
+  setIsVisitor(false);
+}
+
+
+};
+
+const logout = async () => {
+await supabase.auth.signOut();
+setUser(null);
+setIsVisitor(false);
+};
+
+const continueAsVisitor = () => {
+setIsVisitor(true);
+};
+
+const updateProfile = (data: Partial<User>) => {
+if (user) {
+setUser({ ...user, ...data });
+}
+};
+
+const requireAuth = () => {
+return !!(user && user.role !== 'visitor');
+};
+
+return (
+<AuthContext.Provider
+value={{
+user,
+isAuthenticated: !!user,
+isVisitor,
+login,
+register,
+logout,
+continueAsVisitor,
+updateProfile,
+requireAuth,
+}}
+>
+{children}
+</AuthContext.Provider>
+);
 }
 
 export function useAuth() {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error('useAuth debe ser usado dentro de un AuthProvider');
-  }
-  return context;
+const context = useContext(AuthContext);
+if (!context) {
+throw new Error('useAuth debe ser usado dentro de AuthProvider');
+}
+return context;
 }
