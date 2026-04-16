@@ -65,7 +65,7 @@ export default function Home() {
                 placeholder={searchType === 'plant' ? 'Buscar plantas...' : 'Buscar por enfermedad...'}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-input-background rounded-full border border-border focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full pl-10 pr-4 py-3 bg-input-background text-foreground placeholder:text-muted-foreground rounded-full border border-border focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
 
