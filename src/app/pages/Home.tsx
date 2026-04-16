@@ -1,63 +1,65 @@
 import { useState } from 'react';
 import { useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
-import { Search, Bell } from 'lucide-react';
+import { Search, Bell, User } from 'lucide-react';
 import { PlantCard } from '../components/PlantCard';
 import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from "react-router-dom";
 
 export default function Home() {
   const [plants, setPlants] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
-  const fetchPlants = async () => {
-    setLoading(true);
+    const fetchPlants = async () => {
+      setLoading(true);
 
-    const { data } = await supabase
-      .from("publicaciones")
-      .select("*")
-      .eq("estado", "aprobado")
-      .order("created_at", { ascending: false });
+      const { data } = await supabase
+        .from("publicaciones")
+        .select("*")
+        .eq("estado", "aprobado")
+        .order("created_at", { ascending: false });
 
-    setPlants(data || []);
-    setLoading(false);
-  };
+      setPlants(data || []);
+      setLoading(false);
+    };
 
-  fetchPlants();
+    fetchPlants();
 
-  
-}, []);
+
+  }, []);
 
 
   const [searchQuery, setSearchQuery] = useState('');
   const [searchType, setSearchType] = useState<'plant' | 'disease'>('plant');
   const { isAuthenticated } = useAuth();
 
-    
+
 
   const filteredPlants = plants.filter(plant => {
-  const query = searchQuery.toLowerCase();
+    const query = searchQuery.toLowerCase();
 
-  if (searchType === 'plant') {
-    return plant.nombre_planta?.toLowerCase().includes(query) || 
-            plant.nombre_cientifico?.toLowerCase().includes(query);
-  } else {
-    return plant.enfermedades?.some((d: string) =>
-      d.toLowerCase().includes(query)
-    );
-  }
-});
+    if (searchType === 'plant') {
+      return plant.nombre_planta?.toLowerCase().includes(query) ||
+        plant.nombre_cientifico?.toLowerCase().includes(query);
+    } else {
+      return plant.enfermedades?.some((d: string) =>
+        d.toLowerCase().includes(query)
+      );
+    }
+  });
 
   if (loading) {
-  return <p className="text-center mt-10">Cargando plantas...</p>;
-}
+    return <p className="text-center mt-10">Cargando plantas...</p>;
+  }
 
   return (
     <div className="min-h-screen pb-24 md:pb-8">
       {/* Header */}
-      <motion.header 
+      <motion.header
         className="bg-card border-b border-border sticky top-0 z-30"
         initial={{ y: -100 }}
         animate={{ y: 0 }}
@@ -70,17 +72,35 @@ export default function Home() {
               </div>
               <h1 className="text-xl">HAMPIYURA</h1>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-4">
+
+              {/* 👤 USUARIO */}
+              <button
+                className="hidden md:block"
+                onClick={() => {
+                  if (isAuthenticated) {
+                    navigate("/profile");
+                  } else {
+                    navigate("/login");
+                  }
+                }}
+              >
+                <User className="w-5 h-5" />
+              </button>
+
+              {/* 🔔 SOLO SI LOGEADO */}
               {isAuthenticated && (
-                <Link 
+                <Link
                   to="/notifications"
                   className="p-2 hover:bg-secondary rounded-full transition-colors relative"
                 >
                   <Bell className="w-5 h-5" />
-                  <span className="absolute top-1 right-1 w-2 h-2 bg-destructive rounded-full"></span>
+                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
                 </Link>
               )}
-              <Link 
+
+              {/* 📄 ARTÍCULOS */}
+              <Link
                 to="/articles"
                 className="text-sm text-primary hover:underline"
               >
@@ -106,21 +126,19 @@ export default function Home() {
             <div className="flex gap-2">
               <button
                 onClick={() => setSearchType('plant')}
-                className={`flex-1 py-2 px-4 rounded-full transition-colors ${
-                  searchType === 'plant' 
-                    ? 'bg-primary text-primary-foreground' 
-                    : 'bg-secondary text-secondary-foreground hover:bg-accent'
-                }`}
+                className={`flex-1 py-2 px-4 rounded-full transition-colors ${searchType === 'plant'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-secondary text-secondary-foreground hover:bg-accent'
+                  }`}
               >
                 Por Planta
               </button>
               <button
                 onClick={() => setSearchType('disease')}
-                className={`flex-1 py-2 px-4 rounded-full transition-colors ${
-                  searchType === 'disease' 
-                    ? 'bg-primary text-primary-foreground' 
-                    : 'bg-secondary text-secondary-foreground hover:bg-accent'
-                }`}
+                className={`flex-1 py-2 px-4 rounded-full transition-colors ${searchType === 'disease'
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-secondary text-secondary-foreground hover:bg-accent'
+                  }`}
               >
                 Por Enfermedad
               </button>
@@ -136,7 +154,7 @@ export default function Home() {
             {searchQuery ? 'Resultados de búsqueda' : 'Plantas Medicinales'}
           </h2>
           <p className="text-muted-foreground">
-            {searchQuery 
+            {searchQuery
               ? `${filteredPlants.length} planta${filteredPlants.length !== 1 ? 's' : ''} encontrada${filteredPlants.length !== 1 ? 's' : ''}`
               : 'Descubre el poder curativo de la naturaleza'
             }
@@ -144,7 +162,7 @@ export default function Home() {
         </div>
 
         {filteredPlants.length === 0 ? (
-          <motion.div 
+          <motion.div
             className="text-center py-16"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
