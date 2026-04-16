@@ -1,12 +1,16 @@
+
 import { useState } from 'react';
-import { useNavigate, Link } from 'react-router';
+import { useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Upload, X } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useAuth } from '../contexts/AuthContext';
+import { supabase } from '../../lib/supabase';
+import { toast } from "sonner";
 
 export default function PublishPlant() {
   const navigate = useNavigate();
-  const { requireAuth } = useAuth();
+  const [loading, setLoading] = useState(false);
+  const { requireAuth, user } = useAuth();
   const [formData, setFormData] = useState({
     name: '',
     scientificName: '',
@@ -15,7 +19,7 @@ export default function PublishPlant() {
     diseases: '',
     preparations: ''
   });
-  const [images, setImages] = useState<string[]>([]);
+  const [images, setImages] = useState<File[]>([]);
 
   // Verificar autenticación
   if (!requireAuth()) {
@@ -37,24 +41,86 @@ export default function PublishPlant() {
     );
   }
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Simulación de publicación
-    alert('¡Planta publicada exitosamente!');
-    navigate('/');
-  };
+  const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setLoading(true); // 🔥 AQUÍ
+
+  let imageUrl = "";
+
+  if (images.length > 0) {
+    const file = images[0];
+
+    console.log("ARCHIVO:", file); // 👈 IMPORTANTE
+
+    if (file) {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+
+      const { data, error: uploadError } = await supabase.storage
+        .from("plantas")
+        .upload(fileName, file);
+
+      if (uploadError) {
+        console.error("ERROR SUBIENDO:", uploadError);
+      } else {
+        const { data: publicUrlData } = supabase.storage
+          .from("plantas")
+          .getPublicUrl(fileName);
+
+        imageUrl = publicUrlData.publicUrl;
+
+        console.log("URL GENERADA:", imageUrl); // 👈 CLAVE
+
+        if (!imageUrl) {
+          alert("La imagen no se pudo subir correctamente");
+          setLoading(false);
+          return;
+        }
+      }
+    }
+  }
+
+  if (!user) return;
+
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("rol")
+    .eq("email", user.email)
+    .maybeSingle();
+
+  const estadoPublicacion =
+    profile?.rol === "admin" ? "aprobado" : "pendiente";
+
+  const { error } = await supabase.from("publicaciones").insert({
+    user_id: user.id,
+    nombre_planta: formData.name,
+    nombre_cientifico: formData.scientificName,
+    descripcion: formData.description,
+    propiedades: formData.properties.split(",").map(p => p.trim()),
+    enfermedades: formData.diseases.split(",").map(e => e.trim()),
+    preparacion: formData.preparations.split("\n"),
+    imagen_url: imageUrl,
+    estado: estadoPublicacion
+  });
+
+  setLoading(false); // 🔥 AQUÍ
+
+  if (error) {
+    console.error(error);
+    alert(error.message);
+    return;
+  }
+
+  toast.success("Publicación creada correctamente 🌿");
+  navigate("/");
+};
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (files) {
-      // En producción, aquí subirías las imágenes
-      // Por ahora, usamos URLs de ejemplo
-      const newImages = Array.from(files).map(() => 
-        'https://images.unsplash.com/photo-1501004318641-b39e6451bec6?w=400&h=300&fit=crop'
-      );
-      setImages([...images, ...newImages]);
-    }
-  };
+  const files = e.target.files;
+  if (files) {
+    setImages(Array.from(files));
+  }
+};
 
   const removeImage = (index: number) => {
     setImages(images.filter((_, i) => i !== index));
@@ -91,7 +157,11 @@ export default function PublishPlant() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
               {images.map((image, index) => (
                 <div key={index} className="relative aspect-square rounded-xl overflow-hidden bg-secondary">
-                  <img src={image} alt={`Imagen ${index + 1}`} className="w-full h-full object-cover" />
+                  <img 
+                      src={URL.createObjectURL(image)} 
+                      alt={`Imagen ${index + 1}`} 
+                      className="w-full h-full object-cover" 
+                    />
                   <button
                     type="button"
                     onClick={() => removeImage(index)}
@@ -231,6 +301,7 @@ export default function PublishPlant() {
             </button>
             <motion.button
               type="submit"
+              disabled={loading}
               className="flex-1 bg-primary text-primary-foreground py-3 rounded-xl hover:opacity-90 transition-opacity"
               whileTap={{ scale: 0.98 }}
             >
@@ -241,4 +312,5 @@ export default function PublishPlant() {
       </div>
     </div>
   );
+
 }

@@ -1,4 +1,4 @@
-import { useParams, Link, useNavigate } from 'react-router';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Clock, BookOpen, Share2 } from 'lucide-react';
 import { mockArticles } from '../data/mockData';
 import { motion } from 'motion/react';

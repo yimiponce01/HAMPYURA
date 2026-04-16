@@ -1,15 +1,46 @@
-import { useParams, Link, useNavigate } from 'react-router';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Heart, Share2, Flag, Send } from 'lucide-react';
-import { mockPlants } from '../data/mockData';
 import { StarRating } from '../components/StarRating';
 import { motion } from 'motion/react';
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { useEffect } from "react";
+import { supabase } from "../../lib/supabase";
+
+  type Plant = {
+  id: string;
+  nombre_planta: string;
+  nombre_cientifico?: string;
+  descripcion: string;
+  imagen_url: string;
+  propiedades: string[];
+  enfermedades: string[];
+  preparacion: string[];
+  likes?: number;
+  comments?: any[];
+};
 
 export default function PlantDetail() {
   const { id } = useParams();
+  const [plant, setPlant] = useState<Plant | null>(null);
+
+
+
+    useEffect(() => {
+      const fetchPlant = async () => {
+        const { data, error } = await supabase
+          .from("publicaciones")
+          .select("*")
+          .eq("id", id)
+          .single();
+
+        if (!error) setPlant(data);
+      };
+
+      if (id) fetchPlant();
+    }, [id]);
+
   const navigate = useNavigate();
-  const plant = mockPlants.find(p => p.id === id);
   const [userRating, setUserRating] = useState(0);
   const [comment, setComment] = useState('');
   const [isLiked, setIsLiked] = useState(false);
@@ -93,21 +124,14 @@ export default function PlantDetail() {
       <div className="max-w-4xl mx-auto px-4 py-6">
         {/* Images */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          {plant.images.map((image, index) => (
-            <motion.div
-              key={index}
-              className="relative h-64 md:h-80 rounded-2xl overflow-hidden bg-secondary"
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: index * 0.1 }}
-            >
-              <img 
-                src={image} 
-                alt={`${plant.name} ${index + 1}`}
-                className="w-full h-full object-cover"
-              />
-            </motion.div>
-          ))}
+          <div className="mb-6">
+            <img
+              src={plant.imagen_url || "https://via.placeholder.com/400x300"}
+              className="w-full h-64 md:h-80 object-cover rounded-2xl"
+            />
+          </div>
+            
+
         </div>
 
         {/* Info */}
@@ -117,37 +141,35 @@ export default function PlantDetail() {
           transition={{ delay: 0.3 }}
         >
           <div className="mb-4">
-            <h1 className="mb-1">{plant.name}</h1>
-            <p className="text-muted-foreground italic">{plant.scientificName}</p>
+            <h1 className="mb-1">{plant.nombre_planta  }</h1>
+            <p className="text-muted-foreground italic">{plant.nombre_cientifico || "Sin nombre científico"}</p>
           </div>
 
           <div className="flex items-center gap-4 mb-6">
             <StarRating 
-              rating={userRating || plant.rating}
-              totalRatings={plant.totalRatings}
+              rating={userRating || 0}
+              totalRatings={0}
               onRate={handleRate}
             />
             <span className="text-muted-foreground">
-              {plant.likes} me gusta
+              {plant.likes || 0} me gusta
             </span>
           </div>
 
           {/* Description */}
           <div className="mb-6">
             <h3 className="mb-2">Descripción</h3>
-            <p className="text-muted-foreground">{plant.description}</p>
+            <p className="text-muted-foreground">{plant.descripcion}</p>
           </div>
 
           {/* Properties */}
           <div className="mb-6">
             <h3 className="mb-3">Propiedades Medicinales</h3>
             <div className="flex flex-wrap gap-2">
-              {plant.properties.map((property, index) => (
+              {(plant.propiedades || []).map((p: string, i: number) => (
                 <span 
-                  key={index}
-                  className="px-3 py-1 bg-secondary text-secondary-foreground rounded-full text-sm"
-                >
-                  {property}
+                  key={i}>{p}
+
                 </span>
               ))}
             </div>
@@ -157,12 +179,10 @@ export default function PlantDetail() {
           <div className="mb-6">
             <h3 className="mb-3">Trata estas Enfermedades</h3>
             <div className="flex flex-wrap gap-2">
-              {plant.diseases.map((disease, index) => (
+              {(plant.enfermedades || []).map((d: string, i: number) => (
                 <span 
-                  key={index}
-                  className="px-3 py-1 bg-accent text-accent-foreground rounded-full text-sm"
-                >
-                  {disease}
+                  key={i}>{d}
+                
                 </span>
               ))}
             </div>
@@ -172,13 +192,8 @@ export default function PlantDetail() {
           <div className="mb-6">
             <h3 className="mb-3">Formas de Preparación</h3>
             <div className="space-y-3">
-              {plant.preparations.map((prep, index) => (
-                <div key={index} className="flex gap-3">
-                  <div className="w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center flex-shrink-0 text-sm">
-                    {index + 1}
-                  </div>
-                  <p className="text-muted-foreground flex-1">{prep}</p>
-                </div>
+              {(plant.preparacion || []).map((prep: string, i: number) => (
+                <div key={i}>{prep}</div>
               ))}
             </div>
           </div>
@@ -186,19 +201,13 @@ export default function PlantDetail() {
           {/* Author */}
           <div className="mb-6 p-4 bg-secondary rounded-xl">
             <p className="text-sm text-muted-foreground">
-              Publicado por <span className="text-foreground">{plant.authorName}</span>
-              {' • '}
-              {plant.createdAt.toLocaleDateString('es-ES', { 
-                year: 'numeric', 
-                month: 'long', 
-                day: 'numeric' 
-              })}
-            </p>
+              Publicado recientemente🌿
+              </p>
           </div>
 
           {/* Comments Section */}
           <div className="border-t border-border pt-6">
-            <h3 className="mb-4">Comentarios ({plant.comments.length})</h3>
+            <h3 className="mb-4">Comentarios ({(plant.comments || []).length})</h3>
 
             {/* Comment Form */}
             <form onSubmit={handleComment} className="mb-6">
@@ -222,7 +231,7 @@ export default function PlantDetail() {
 
             {/* Comments List */}
             <div className="space-y-4">
-              {plant.comments.map((comment) => (
+              {(plant.comments || []).map((comment: any) => (
                 <div key={comment.id} className="flex gap-3">
                   <div className="w-10 h-10 bg-secondary rounded-full flex-shrink-0 overflow-hidden">
                     {comment.userAvatar && (
@@ -241,7 +250,7 @@ export default function PlantDetail() {
                 </div>
               ))}
 
-              {plant.comments.length === 0 && (
+              {(plant.comments || []).length === 0 && (
                 <p className="text-center text-muted-foreground py-8">
                   Sé el primero en comentar
                 </p>

@@ -1,4 +1,4 @@
-import { createHashRouter } from "react-router-dom";
+import { createHashRouter } from 'react-router-dom';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -13,11 +13,13 @@ import AdminDashboard from './pages/AdminDashboard';
 import Notifications from './pages/Notifications';
 import NotFound from './pages/NotFound';
 import Layout from './components/Layout';
+import AdminModeration from "./pages/AdminModeration";
+
 
 export const router = createHashRouter([
   {
     path: '/',
-    element: <Layout />,
+    element: <Layout />, // ✅ SOLO Layouts
     children: [
       { index: true, element: <Home /> },
       { path: 'plant/:id', element: <PlantDetail /> },
@@ -28,9 +30,11 @@ export const router = createHashRouter([
       { path: 'article/:id', element: <ArticleDetail /> },
       { path: 'admin', element: <AdminDashboard /> },
       { path: 'notifications', element: <Notifications /> },
+      { path: "admin/moderacion", element: <AdminModeration /> },
       { path: '*', element: <NotFound /> },
     ],
   },
+
   {
     path: '/login',
     element: <Login />,
@@ -43,4 +47,6 @@ export const router = createHashRouter([
     path: '/forgot-password',
     element: <ForgotPassword />,
   },
+
+
 ]);

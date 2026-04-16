@@ -1,5 +1,5 @@
 import { Home, Camera, User, X } from 'lucide-react';
-import { Link, useLocation } from 'react-router';
+import { Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { motion } from 'motion/react';
 import { useState } from 'react';

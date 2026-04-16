@@ -1,8 +1,9 @@
 import { useState } from 'react';
+import { useEffect } from 'react';
+import { supabase } from '../../lib/supabase';
 import { Search, Bell } from 'lucide-react';
 import { PlantCard } from '../components/PlantCard';
-import { mockPlants } from '../data/mockData';
-import { Link } from 'react-router';
+import { Link } from 'react-router-dom';
 import { motion } from 'motion/react';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -11,15 +12,38 @@ export default function Home() {
   const [searchType, setSearchType] = useState<'plant' | 'disease'>('plant');
   const { isAuthenticated } = useAuth();
 
-  const filteredPlants = mockPlants.filter(plant => {
-    const query = searchQuery.toLowerCase();
-    if (searchType === 'plant') {
-      return plant.name.toLowerCase().includes(query) || 
-             plant.scientificName.toLowerCase().includes(query);
-    } else {
-      return plant.diseases.some(disease => disease.toLowerCase().includes(query));
-    }
-  });
+  const [plants, setPlants] = useState<any[]>([]);
+    useEffect(() => {
+    const fetchPlants = async () => {
+      const { data } = await supabase
+        .from("publicaciones")
+        .select("*")
+        .eq("estado", "aprobado")
+        .order("created_at", { ascending: false });
+
+      setPlants(data || []);
+    };
+
+    fetchPlants();
+
+    // 🔥 refresca cada 3 segundos (opcional)
+    const interval = setInterval(fetchPlants, 3000);
+
+    return () => clearInterval(interval);
+  }, []);
+
+  const filteredPlants = plants.filter(plant => {
+  const query = searchQuery.toLowerCase();
+
+  if (searchType === 'plant') {
+    return plant.nombre_planta?.toLowerCase().includes(query) || 
+            plant.nombre_cientifico?.toLowerCase().includes(query);
+  } else {
+    return plant.enfermedades?.some((d: string) =>
+      d.toLowerCase().includes(query)
+    );
+  }
+});
 
   return (
     <div className="min-h-screen pb-24 md:pb-8">
@@ -123,7 +147,7 @@ export default function Home() {
             </p>
           </motion.div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          <div className="grid grid-cols-2 gap-4">
             {filteredPlants.map((plant, index) => (
               <motion.div
                 key={plant.id}
@@ -131,7 +155,19 @@ export default function Home() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.1 }}
               >
-                <PlantCard plant={plant} />
+                <PlantCard
+                  plant={{
+                    id: plant.id,
+                    nombre_planta: plant.nombre_planta,
+                    nombre_cientifico: plant.nombre_cientifico,
+                    descripcion: plant.descripcion,
+                    imagen_url: plant.imagen_url,
+                    enfermedades: plant.enfermedades || [],
+                    propiedades: plant.propiedades || [],
+                    preparacion: plant.preparacion || [],
+                    likes: plant.likes || 0,
+                  }}
+                />
               </motion.div>
             ))}
           </div>

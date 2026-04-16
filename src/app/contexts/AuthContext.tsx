@@ -92,17 +92,19 @@ if (data.user) {
 };
 
 const register = async (name: string, email: string, password: string) => {
-const { data, error } = await supabase.auth.signUp({
-email,
-password,
-});
+  const { data, error } = await supabase.auth.signUp({
+    email,
+    password,
+  });
 
-if (error) {
-  console.error('REGISTER ERROR:', error.message);
-  return;
-}
+  if (error) {
+    console.error(error.message);
+    return;
+  }
 
-if (data.user) {
+  if (!data.user) return;
+
+  // guardar perfil
   await supabase.from('perfiles').insert({
     id: data.user.id,
     nombre: name,
@@ -110,17 +112,19 @@ if (data.user) {
     rol: 'user',
   });
 
-  setUser({
-    id: data.user.id,
-    name,
+  // 🔥 LOGIN AUTOMÁTICO
+  const { error: loginError } = await supabase.auth.signInWithPassword({
     email,
-    role: 'user',
+    password,
   });
 
-  setIsVisitor(false);
-}
+  if (loginError) {
+    console.error(loginError.message);
+    return;
+  }
 
-
+  // 🔥 REDIRECCIÓN
+  window.location.href = "/";
 };
 
 const logout = async () => {

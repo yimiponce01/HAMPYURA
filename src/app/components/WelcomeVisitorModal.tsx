@@ -1,7 +1,7 @@
 import { motion } from 'motion/react';
 import { X, Leaf } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router';
+import { Link } from 'react-router-dom';
 
 export function WelcomeVisitorModal() {
   const [isVisible, setIsVisible] = useState(false);

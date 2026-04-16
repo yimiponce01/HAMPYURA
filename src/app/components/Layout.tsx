@@ -1,4 +1,4 @@
-import { Outlet, useLocation } from 'react-router';
+import { Outlet, useLocation } from 'react-router-dom';
 import { MobileNavigation } from './MobileNavigation';
 import { AccessibilityControls } from './AccessibilityControls';
 import { WelcomeVisitorModal } from './WelcomeVisitorModal';

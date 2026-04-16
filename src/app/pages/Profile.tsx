@@ -1,11 +1,38 @@
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router-dom';
 import { Settings, LogOut, Camera } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { motion } from 'motion/react';
-import { mockPlants } from '../data/mockData';
+import { useEffect, useState } from 'react';
+import { supabase } from '../../lib/supabase';
+
+
 
 export default function Profile() {
+  
   const { user, isAuthenticated, logout } = useAuth();
+  const [userPlants, setUserPlants] = useState<any[]>([]);
+    
+      useEffect(() => {
+      if (!user) return; // 🔥 evita error
+
+      const fetchUserPlants = async () => {
+        const { data, error } = await supabase
+          .from("publicaciones")
+          .select("*")
+          .eq("user_id", user.id)
+          .eq("estado", "aprobado")
+          .order("created_at", { ascending: false });
+
+        if (!error) {
+          setUserPlants(data || []);
+        } else {
+          console.error(error);
+        }
+      };
+
+      fetchUserPlants();
+    }, [user]);
+
   const navigate = useNavigate();
 
   if (!isAuthenticated || !user) {
@@ -34,7 +61,6 @@ export default function Profile() {
     );
   }
 
-  const userPlants = mockPlants.filter(p => p.authorId === user.id);
 
   const handleLogout = () => {
     logout();
@@ -43,26 +69,48 @@ export default function Profile() {
 
   return (
     <div className="min-h-screen pb-24 md:pb-8">
+
       {/* Header */}
       <div className="bg-primary text-primary-foreground">
         <div className="max-w-4xl mx-auto px-4 py-8">
           <div className="flex items-center justify-between mb-4">
-            <h1>Perfil</h1>
-            <div className="flex gap-2">
-              <Link 
-                to="/edit-profile"
-                className="p-2 hover:bg-white/20 rounded-full transition-colors"
-              >
-                <Settings className="w-5 h-5" />
-              </Link>
-              <button 
-                onClick={handleLogout}
-                className="p-2 hover:bg-white/20 rounded-full transition-colors"
-              >
-                <LogOut className="w-5 h-5" />
-              </button>
-            </div>
+
+          {/* IZQUIERDA */}
+          <div className="flex flex-col gap-3">
+
+            {/* BOTÓN VOLVER */}
+            <button
+              onClick={() => navigate('/')}
+              className="text-white hover:opacity-80 -ml-2 text-base"
+            >
+              ← Volver
+            </button>
+
+            {/* TÍTULO */}
+            <h1 className="text-3xl font-bold tracking-tight">
+              Perfil
+            </h1>
+
           </div>
+
+          {/* DERECHA */}
+          <div className="flex gap-2">
+            <Link 
+              to="/edit-profile"
+              className="p-2 hover:bg-white/20 rounded-full transition-colors"
+            >
+              <Settings className="w-5 h-5" />
+            </Link>
+            <button 
+              onClick={handleLogout}
+              className="p-2 hover:bg-white/20 rounded-full transition-colors"
+            >
+              <LogOut className="w-5 h-5" />
+            </button>
+          </div>
+
+        </div>
+            
 
           <div className="flex items-center gap-4">
             <div className="w-20 h-20 bg-white/20 rounded-full overflow-hidden flex-shrink-0">
@@ -95,18 +143,18 @@ export default function Profile() {
       <div className="max-w-4xl mx-auto px-4 -mt-6">
         <div className="grid grid-cols-3 gap-4 bg-card rounded-2xl shadow-lg border border-border p-4">
           <div className="text-center">
-            <div className="text-2xl mb-1">{userPlants.length}</div>
+            <div className="text-2xl mb-1">{(userPlants || []).length}</div>
             <div className="text-sm text-muted-foreground">Publicaciones</div>
           </div>
           <div className="text-center">
             <div className="text-2xl mb-1">
-              {userPlants.reduce((acc, p) => acc + p.likes, 0)}
+              {(userPlants || []).reduce((acc, p) => acc + 0, 0)}
             </div>
             <div className="text-sm text-muted-foreground">Me gusta</div>
           </div>
           <div className="text-center">
             <div className="text-2xl mb-1">
-              {userPlants.reduce((acc, p) => acc + p.comments.length, 0)}
+              {(userPlants || []).reduce((acc, p) => acc + (p.comments || []).length, 0)}
             </div>
             <div className="text-sm text-muted-foreground">Comentarios</div>
           </div>
@@ -156,20 +204,30 @@ export default function Profile() {
               >
                 <div className="h-32 overflow-hidden bg-secondary">
                   <img 
-                    src={plant.images[0]} 
-                    alt={plant.name}
+                    src={plant.imagen_url || "https://via.placeholder.com/300"} 
+                    alt={plant.nombre_planta}
                     className="w-full h-full object-cover"
                   />
                 </div>
+
                 <div className="p-4">
-                  <h4 className="mb-1">{plant.name}</h4>
+                  <h4 className="mb-1">{plant.nombre_planta}</h4>
+
                   <p className="text-sm text-muted-foreground line-clamp-2">
-                    {plant.shortDescription}
+                    {plant.descripcion}
                   </p>
+
                   <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
-                    <span>❤️ {plant.likes}</span>
-                    <span>⭐ {plant.rating}</span>
-                    <span>💬 {plant.comments.length}</span>
+                    
+                    {/* ❤️ likes fake visual */}
+                    <span>❤️ 0</span>
+
+                    {/* ⭐ rating visual */}
+                    <span>⭐ 5.0</span>
+
+                    {/* 💬 comentarios fake */}
+                    <span>💬 0</span>
+
                   </div>
                 </div>
               </Link>

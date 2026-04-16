@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Camera } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { motion } from 'motion/react';
+import { supabase } from '../../lib/supabase';
 
 export default function EditProfile() {
   const { user, updateProfile } = useAuth();
@@ -14,11 +15,32 @@ export default function EditProfile() {
     avatar: user?.avatar || ''
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!user) return;
+
+    const { error } = await supabase
+      .from("perfiles")
+      .update({
+        nombre: formData.name,
+        email: formData.email,
+        bio: formData.bio,
+        foto_url: formData.avatar
+      })
+      .eq("id", user.id);
+
+    if (error) {
+      console.error(error);
+      alert("Error al actualizar perfil");
+      return;
+    }
+
+    // 🔥 actualiza también el contexto (UI)
     updateProfile(formData);
-    alert('Perfil actualizado correctamente');
-    navigate('/profile');
+
+    alert("Perfil actualizado correctamente");
+    navigate("/profile");
   };
 
   const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {

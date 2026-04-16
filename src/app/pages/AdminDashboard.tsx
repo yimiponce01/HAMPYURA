@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router';
+import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Users, FileText, Flag, BarChart3 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { motion } from 'motion/react';
@@ -136,7 +136,10 @@ export default function AdminDashboard() {
               <p className="text-muted-foreground mb-4">
                 Revisa y modera las publicaciones de plantas medicinales
               </p>
-              <button className="w-full bg-primary text-primary-foreground py-2 rounded-xl hover:opacity-90 transition-opacity">
+              <button
+                onClick={() => navigate("/admin/moderacion")}
+                className="w-full bg-primary text-primary-foreground py-2 rounded-xl hover:opacity-90 transition-opacity"
+              >
                 Moderar Contenido
               </button>
             </div>

@@ -1,4 +1,4 @@
-import { Link } from 'react-router';
+import { Link } from 'react-router-dom';
 import { ArrowLeft, Clock, BookOpen } from 'lucide-react';
 import { mockArticles } from '../data/mockData';
 import { motion } from 'motion/react';
