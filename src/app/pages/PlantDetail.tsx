@@ -8,6 +8,7 @@ import { useEffect } from "react";
 import { supabase } from "../../lib/supabase";
 import { toast } from "sonner"; 
 
+
   type Plant = {
   id: string;
   nombre_planta: string;
@@ -26,9 +27,29 @@ export default function PlantDetail() {
   const [plant, setPlant] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
+
+  const fetchComentarios = async () => {
+        const { data, error } = await supabase
+          .from("comentarios")
+          .select(`
+            *,
+            perfiles (
+              nombre,
+              foto_url,
+              region,
+              rol
+            )
+          `)
+          .eq("publicacion_id", id)
+          .order("created_at", { ascending: false });
+
+        if (!error) setComentarios(data || []);
+      };
+
+
     useEffect(() => {
       const fetchPlant = async () => {
-        setLoading(true); // 👈 AGREGAR
+        setLoading(true);
 
         const { data, error } = await supabase
           .from("publicaciones")
@@ -36,20 +57,44 @@ export default function PlantDetail() {
           .eq("id", id)
           .single();
 
-        if (!error) setPlant(data);
+          console.log("PLANT DATA:", data);
+          console.log("PLANT ERROR:", error);
 
-        setLoading(false); // 👈 AGREGAR
+          if (!error && data) {
+            setPlant(data);
+          } else {
+            console.error("Error al traer planta:", error);
+          }
+
+        setLoading(false);
+      };
+      
+
+      if (id) {
+        fetchPlant();
+        fetchComentarios();
+      }
+
+      const getUser = async () => {
+      const { data } = await supabase.auth.getUser();
+        setUser(data.user);
       };
 
-      if (id) fetchPlant();
+    getUser();
+
     }, [id]);
+
 
   const navigate = useNavigate();
   const [userRating, setUserRating] = useState(0);
   const [comment, setComment] = useState('');
+  const [comentarios, setComentarios] = useState<any[]>([]);
+  const [user, setUser] = useState<any>(null);
   const [isLiked, setIsLiked] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const { requireAuth } = useAuth();
+  
+
 
   if (loading) {
   return (
@@ -59,18 +104,19 @@ export default function PlantDetail() {
   );
 }
 
-  if (!plant) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h2 className="mb-4">Planta no encontrada</h2>
-          <Link to="/" className="text-primary hover:underline">
-            Volver al inicio
-          </Link>
-        </div>
-      </div>
-    );
-  }
+if (!plant) {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <p>No se encontró la planta</p>
+    </div>
+  );
+}
+
+console.log("PLANT COMPLETA:", plant);
+console.log("PROPIEDADES:", plant.propiedades);
+console.log("ENFERMEDADES:", plant.enfermedades);
+console.log("PREPARACION:", plant.preparacion);
+
 
   const handleRate = (rating: number) => {
     if (requireAuth()) {
@@ -83,21 +129,63 @@ export default function PlantDetail() {
     }
   };
 
-  const handleComment = (e: React.FormEvent) => {
+  const handleComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (requireAuth()) {
-      if (comment.trim()) {
-        alert('Comentario publicado');
-        setComment('');
-      }
-    } else {
-        if (!requireAuth()) {
-          toast.error("Debes iniciar sesión para comentar 💬", {
-            description: "Accede a tu cuenta para dejar tu opinión 🌿",
-          });
-          return;
-        }
+
+    const { data: userData } = await supabase.auth.getUser();
+    const user = userData.user;
+
+    if (!user) {
+      toast.error("Debes iniciar sesión 💬");
+      return;
     }
+
+    if (!comment.trim()) return;
+
+    const { error } = await supabase.from("comentarios").insert({
+      publicacion_id: id,
+      user_id: user.id,
+      contenido: comment
+    });
+
+    if (!error) {
+      setComment('');
+      
+      // recargar comentarios
+      const { data } = await supabase
+        .from("comentarios")
+        .select(`
+          *,
+          perfiles (
+            nombre,
+            foto_url,
+            region,
+            rol
+          )
+        `)
+        .eq("publicacion_id", id)
+        .order("created_at", { ascending: false });
+
+      setComentarios(data || []);
+    }
+  };
+
+      const editarComentario = async (id: string, nuevoTexto: string) => {
+    const { error } = await supabase
+      .from("comentarios")
+      .update({ contenido: nuevoTexto })
+      .eq("id", id);
+
+    if (!error) fetchComentarios();
+  };
+
+  const eliminarComentario = async (id: string) => {
+    const { error } = await supabase
+      .from("comentarios")
+      .delete()
+      .eq("id", id);
+
+    if (!error) fetchComentarios();
   };
 
   const handleLike = () => {
@@ -108,7 +196,7 @@ export default function PlantDetail() {
           description: "Debes iniciar sesión para dar like",
         });
     }
-  };
+  }
 
   return (
     <div className="min-h-screen pb-24 md:pb-8">
@@ -246,10 +334,73 @@ export default function PlantDetail() {
 
           {/* Comments Section */}
           <div className="border-t border-border pt-6">
-            <h3 className="mb-4">Comentarios ({(plant.comments || []).length})</h3>
+            <h3 className="mb-4">Comentarios ({comentarios.length})</h3>
 
             {/* Comment Form */}
             <form onSubmit={handleComment} className="mb-6">
+              {/* LISTA DE COMENTARIOS */}
+              <div className="mt-4">
+                {comentarios.map((comentario: any) => {
+                    const esPropio = user?.id === comentario.user_id;
+                    const esAdmin = comentario.perfiles?.rol === "admin";
+
+                    return (
+                      <div key={comentario.id} className="flex gap-3 mb-4">
+
+                        <img
+                          src={comentario.perfiles?.foto_url || "https://via.placeholder.com/40"}
+                          className="w-10 h-10 rounded-full object-cover"
+                        />
+
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+
+                            <span className="font-semibold text-sm">
+                              {comentario.perfiles?.nombre || "Usuario"}
+                            </span>
+
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-800 dark:text-white">
+                              {comentario.perfiles?.region || "sin región"}
+                            </span>
+
+                            {comentario.perfiles?.rol === "admin" && (
+                              <span className="text-xs bg-yellow-200 text-yellow-800 px-2 py-0.5 rounded-full">
+                                admin
+                              </span>
+                            )}
+                          </div>
+
+                          <p className="text-sm mt-1">
+                            {comentario.contenido}
+                          </p>
+
+                          {(esPropio || esAdmin) && (
+                            <div className="flex gap-2 mt-2">
+                              <button
+                                onClick={() => {
+                                  const nuevo = prompt("Editar comentario:", comentario.contenido);
+                                  if (nuevo) editarComentario(comentario.id, nuevo);
+                                }}
+                                className="text-xs text-blue-600 hover:underline"
+                              >
+                                Editar
+                              </button>
+
+                              <button
+                                onClick={() => eliminarComentario(comentario.id)}
+                                className="text-xs text-red-600 hover:underline"
+                              >
+                                Eliminar
+                              </button>
+                            </div>
+                          )}
+
+                        </div>
+                      </div>
+                    );
+                  })}
+
+              </div>
               <div className="flex gap-3">
                 <input
                   type="text"
@@ -268,76 +419,56 @@ export default function PlantDetail() {
               </div>
             </form>
 
-            {/* Comments List */}
-            <div className="space-y-4">
-              {(plant.comments || []).map((comment: any) => (
-                <div key={comment.id} className="flex gap-3">
-                  <div className="w-10 h-10 bg-secondary rounded-full flex-shrink-0 overflow-hidden">
-                    {comment.userAvatar && (
-                      <img src={comment.userAvatar} alt={comment.userName} className="w-full h-full object-cover" />
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <div className="bg-secondary rounded-2xl p-4">
-                      <p className="text-sm mb-1">{comment.userName}</p>
-                      <p className="text-muted-foreground">{comment.content}</p>
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-1 px-4">
-                      {comment.createdAt.toLocaleDateString('es-ES')}
-                    </p>
-                  </div>
-                </div>
-              ))}
-
-              {(plant.comments || []).length === 0 && (
-                <p className="text-center text-muted-foreground py-8">
-                  Sé el primero en comentar
-                </p>
-              )}
-            </div>
+            
           </div>
         </motion.div>
       </div>
 
-      {/* Report Modal */}
-      {showReportModal && (
-        <div 
-          className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
-          onClick={() => setShowReportModal(false)}
+                    {/* Report Modal */}
+    {showReportModal && (
+      <div 
+        className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+        onClick={() => setShowReportModal(false)}
+      >
+        <motion.div 
+          className="bg-card rounded-2xl p-6 max-w-sm w-full"
+          initial={{ scale: 0.9, y: 20 }}
+          animate={{ scale: 1, y: 0 }}
+          onClick={(e) => e.stopPropagation()}
         >
-          <motion.div 
-            className="bg-card rounded-2xl p-6 max-w-sm w-full"
-            initial={{ scale: 0.9, y: 20 }}
-            animate={{ scale: 1, y: 0 }}
-            onClick={(e) => e.stopPropagation()}
+          <h3 className="mb-4">Reportar Contenido</h3>
+
+          <p className="text-muted-foreground mb-4">
+            ¿Por qué deseas reportar esta publicación?
+          </p>
+
+          <div className="space-y-2 mb-6">
+            {['Información incorrecta', 'Contenido inapropiado', 'Spam', 'Otro'].map((reason) => (
+              <button
+                key={reason}
+                className="w-full py-2 text-left hover:bg-accent rounded-md px-2"
+              >
+                {reason}
+              </button>
+            ))}
+          </div>
+          
+
+          <button
+            onClick={() => setShowReportModal(false)}
+            className="w-full py-2 text-muted-foreground hover:text-foreground"
           >
-            <h3 className="mb-4">Reportar Contenido</h3>
-            <p className="text-muted-foreground mb-4">
-              ¿Por qué deseas reportar esta publicación?
-            </p>
-            <div className="space-y-2 mb-6">
-              {['Información incorrecta', 'Contenido inapropiado', 'Spam', 'Otro'].map((reason) => (
-                <button
-                  key={reason}
-                  onClick={() => {
-                    alert(`Reporte enviado: ${reason}`);
-                    setShowReportModal(false);
-                  }}
-                  className="w-full text-left px-4 py-3 bg-secondary hover:bg-accent rounded-lg transition-colors"
-                >
-                  {reason}
-                </button>
-              ))}
-            </div>
-            <button
-              onClick={() => setShowReportModal(false)}
-              className="w-full py-2 text-muted-foreground hover:text-foreground"
-            >
-              Cancelar
-            </button>
-          </motion.div>
-        </div>
-      )}
+            Cancelar
+          </button>
+          
+        </motion.div>
+      </div>
+      
+        )}
+    
     </div>
-  );
-}
+    
+      );
+
+  }
+  
