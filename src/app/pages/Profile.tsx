@@ -8,37 +8,37 @@ import { supabase } from '../../lib/supabase';
 
 
 export default function Profile() {
-  
+
   const { user, isAuthenticated, logout } = useAuth();
   const [userPlants, setUserPlants] = useState<any[]>([]);
-    
-      useEffect(() => {
-      if (!user) return; // 🔥 evita error
 
-      const fetchUserPlants = async () => {
-        const { data, error } = await supabase
-          .from("publicaciones")
-          .select("*")
-          .eq("user_id", user.id)
-          .eq("estado", "aprobado")
-          .order("created_at", { ascending: false });
+  useEffect(() => {
+    if (!user) return; // 🔥 evita error
 
-        if (!error) {
-          setUserPlants(data || []);
-        } else {
-          console.error(error);
-        }
-      };
+    const fetchUserPlants = async () => {
+      const { data, error } = await supabase
+        .from("publicaciones")
+        .select("*")
+        .eq("user_id", user.id)
+        .eq("estado", "aprobado")
+        .order("created_at", { ascending: false });
 
-      fetchUserPlants();
-    }, [user]);
+      if (!error) {
+        setUserPlants(data || []);
+      } else {
+        console.error(error);
+      }
+    };
+
+    fetchUserPlants();
+  }, [user]);
 
   const navigate = useNavigate();
 
   if (!isAuthenticated || !user) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
-        <motion.div 
+        <motion.div
           className="text-center"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -50,7 +50,7 @@ export default function Profile() {
           <p className="text-muted-foreground mb-6">
             Inicia sesión para acceder a tu perfil
           </p>
-          <Link 
+          <Link
             to="/login"
             className="inline-block bg-primary text-primary-foreground px-6 py-3 rounded-xl hover:opacity-90"
           >
@@ -75,42 +75,42 @@ export default function Profile() {
         <div className="max-w-4xl mx-auto px-4 py-8">
           <div className="flex items-center justify-between mb-4">
 
-          {/* IZQUIERDA */}
-          <div className="flex flex-col gap-3">
+            {/* IZQUIERDA */}
+            <div className="flex flex-col gap-3">
 
-            {/* BOTÓN VOLVER */}
-            <button
-              onClick={() => navigate('/')}
-              className="text-white hover:opacity-80 -ml-2 text-base"
-            >
-              ← Volver
-            </button>
+              {/* BOTÓN VOLVER */}
+              <button
+                onClick={() => navigate('/')}
+                className="text-white hover:opacity-80 -ml-2 text-base"
+              >
+                ← Volver
+              </button>
 
-            {/* TÍTULO */}
-            <h1 className="text-3xl font-bold tracking-tight">
-              Perfil
-            </h1>
+              {/* TÍTULO */}
+              <h1 className="text-3xl font-bold tracking-tight">
+                Perfil
+              </h1>
+
+            </div>
+
+            {/* DERECHA */}
+            <div className="flex gap-2">
+              <Link
+                to="/edit-profile"
+                className="p-2 hover:bg-white/20 rounded-full transition-colors"
+              >
+                <Settings className="w-5 h-5" />
+              </Link>
+              <button
+                onClick={handleLogout}
+                className="p-2 hover:bg-white/20 rounded-full transition-colors"
+              >
+                <LogOut className="w-5 h-5" />
+              </button>
+            </div>
 
           </div>
 
-          {/* DERECHA */}
-          <div className="flex gap-2">
-            <Link 
-              to="/edit-profile"
-              className="p-2 hover:bg-white/20 rounded-full transition-colors"
-            >
-              <Settings className="w-5 h-5" />
-            </Link>
-            <button 
-              onClick={handleLogout}
-              className="p-2 hover:bg-white/20 rounded-full transition-colors"
-            >
-              <LogOut className="w-5 h-5" />
-            </button>
-          </div>
-
-        </div>
-            
 
           <div className="flex items-center gap-4">
             <div className="w-20 h-20 bg-white/20 rounded-full overflow-hidden flex-shrink-0">
@@ -164,7 +164,7 @@ export default function Profile() {
       {/* Admin Panel Link */}
       {user.role === 'admin' && (
         <div className="max-w-4xl mx-auto px-4 mt-6">
-          <Link 
+          <Link
             to="/admin"
             className="block bg-accent text-accent-foreground p-4 rounded-xl hover:bg-accent/80 transition-colors"
           >
@@ -178,7 +178,19 @@ export default function Profile() {
 
       {/* User Plants */}
       <div className="max-w-4xl mx-auto px-4 mt-8">
-        <h3 className="mb-4">Mis Publicaciones</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-semibold">Mis Publicaciones</h3>
+
+          {/* SOLO en PC y SOLO si hay publicaciones */}
+          {userPlants.length > 0 && (
+            <Link
+              to="/publish"
+              className="hidden md:block bg-primary text-primary-foreground px-4 py-2 rounded-xl hover:opacity-90"
+            >
+              Publicar Planta
+            </Link>
+          )}
+        </div>
 
         {userPlants.length === 0 ? (
           <div className="text-center py-16">
@@ -187,7 +199,7 @@ export default function Profile() {
             <p className="text-muted-foreground mb-6">
               Comparte tus conocimientos sobre plantas medicinales
             </p>
-            <Link 
+            <Link
               to="/publish"
               className="inline-block bg-primary text-primary-foreground px-6 py-3 rounded-xl hover:opacity-90"
             >
@@ -197,14 +209,14 @@ export default function Profile() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {userPlants.map((plant) => (
-              <Link 
+              <Link
                 key={plant.id}
                 to={`/plant/${plant.id}`}
                 className="bg-card rounded-xl overflow-hidden border border-border hover:shadow-md transition-shadow"
               >
                 <div className="h-32 overflow-hidden bg-secondary">
-                  <img 
-                    src={plant.imagen_url || "https://via.placeholder.com/300"} 
+                  <img
+                    src={plant.imagen_url || "https://via.placeholder.com/300"}
                     alt={plant.nombre_planta}
                     className="w-full h-full object-cover"
                   />
@@ -218,7 +230,7 @@ export default function Profile() {
                   </p>
 
                   <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
-                    
+
                     {/* ❤️ likes fake visual */}
                     <span>❤️ 0</span>
 
