@@ -5,6 +5,7 @@ import { motion } from 'motion/react';
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from '../../lib/supabase';
+import { toast } from "sonner";
 
 // ✅ TYPE ARRIBA
 type Plant = {
@@ -32,7 +33,9 @@ export function PlantCard({ plant }: PlantCardProps) {
   e.stopPropagation();
 
   if (!requireAuth()) {
-    alert('Debes iniciar sesión para dar like');
+    toast.error("Debes iniciar sesión para dar like 🔒", {
+      description: "Inicia sesión para interactuar con las plantas 🌿",
+    });
     return;
   }
 

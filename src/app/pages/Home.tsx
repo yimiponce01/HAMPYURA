@@ -8,29 +8,34 @@ import { motion } from 'motion/react';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function Home() {
+  const [plants, setPlants] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+  const fetchPlants = async () => {
+    setLoading(true);
+
+    const { data } = await supabase
+      .from("publicaciones")
+      .select("*")
+      .eq("estado", "aprobado")
+      .order("created_at", { ascending: false });
+
+    setPlants(data || []);
+    setLoading(false);
+  };
+
+  fetchPlants();
+
+  
+}, []);
+
+
   const [searchQuery, setSearchQuery] = useState('');
   const [searchType, setSearchType] = useState<'plant' | 'disease'>('plant');
   const { isAuthenticated } = useAuth();
 
-  const [plants, setPlants] = useState<any[]>([]);
-    useEffect(() => {
-    const fetchPlants = async () => {
-      const { data } = await supabase
-        .from("publicaciones")
-        .select("*")
-        .eq("estado", "aprobado")
-        .order("created_at", { ascending: false });
-
-      setPlants(data || []);
-    };
-
-    fetchPlants();
-
-    // 🔥 refresca cada 3 segundos (opcional)
-    const interval = setInterval(fetchPlants, 3000);
-
-    return () => clearInterval(interval);
-  }, []);
+    
 
   const filteredPlants = plants.filter(plant => {
   const query = searchQuery.toLowerCase();
@@ -44,6 +49,10 @@ export default function Home() {
     );
   }
 });
+
+  if (loading) {
+  return <p className="text-center mt-10">Cargando plantas...</p>;
+}
 
   return (
     <div className="min-h-screen pb-24 md:pb-8">
@@ -148,7 +157,7 @@ export default function Home() {
           </motion.div>
         ) : (
           <div className="grid grid-cols-2 gap-4">
-            {filteredPlants.map((plant, index) => (
+            {(filteredPlants as any[]).map((plant, index) => (
               <motion.div
                 key={plant.id}
                 initial={{ opacity: 0, y: 20 }}

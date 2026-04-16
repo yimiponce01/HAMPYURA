@@ -6,6 +6,7 @@ import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useEffect } from "react";
 import { supabase } from "../../lib/supabase";
+import { toast } from "sonner"; 
 
   type Plant = {
   id: string;
@@ -22,12 +23,13 @@ import { supabase } from "../../lib/supabase";
 
 export default function PlantDetail() {
   const { id } = useParams();
-  const [plant, setPlant] = useState<Plant | null>(null);
-
-
+  const [plant, setPlant] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
     useEffect(() => {
       const fetchPlant = async () => {
+        setLoading(true); // 👈 AGREGAR
+
         const { data, error } = await supabase
           .from("publicaciones")
           .select("*")
@@ -35,6 +37,8 @@ export default function PlantDetail() {
           .single();
 
         if (!error) setPlant(data);
+
+        setLoading(false); // 👈 AGREGAR
       };
 
       if (id) fetchPlant();
@@ -46,6 +50,14 @@ export default function PlantDetail() {
   const [isLiked, setIsLiked] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const { requireAuth } = useAuth();
+
+  if (loading) {
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <p className="text-muted-foreground">Cargando...</p>
+    </div>
+  );
+}
 
   if (!plant) {
     return (
@@ -65,7 +77,9 @@ export default function PlantDetail() {
       setUserRating(rating);
       alert(`Has valorado esta planta con ${rating} estrellas`);
     } else {
-      alert('Debes iniciar sesión para valorar');
+      toast.error("Acceso requerido 🔒", {
+        description: "Debes iniciar sesión para dar estrellas⭐",
+      });
     }
   };
 
@@ -77,7 +91,12 @@ export default function PlantDetail() {
         setComment('');
       }
     } else {
-      alert('Debes iniciar sesión para comentar');
+        if (!requireAuth()) {
+          toast.error("Debes iniciar sesión para comentar 💬", {
+            description: "Accede a tu cuenta para dejar tu opinión 🌿",
+          });
+          return;
+        }
     }
   };
 
@@ -85,7 +104,9 @@ export default function PlantDetail() {
     if (requireAuth()) {
       setIsLiked(!isLiked);
     } else {
-      alert('Debes iniciar sesión para dar like');
+      toast.error("Acceso requerido 🔒", {
+          description: "Debes iniciar sesión para dar like",
+        });
     }
   };
 
