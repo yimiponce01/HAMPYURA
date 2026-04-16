@@ -15,11 +15,18 @@ export default function PublishPlant() {
     name: '',
     scientificName: '',
     description: '',
-    properties: '',
-    diseases: '',
-    preparations: ''
+    
   });
   const [images, setImages] = useState<File[]>([]);
+
+  // 🔥 NUEVO SISTEMA DINÁMICO
+  const [propiedades, setPropiedades] = useState<string[]>([]);
+  const [propInput, setPropInput] = useState("");
+
+  const [enfermedades, setEnfermedades] = useState<string[]>([]);
+  const [enfInput, setEnfInput] = useState("");
+
+  const [preparacion, setPreparacion] = useState<string[]>([]);
 
   // Verificar autenticación
   if (!requireAuth()) {
@@ -91,14 +98,32 @@ export default function PublishPlant() {
   const estadoPublicacion =
     profile?.rol === "admin" ? "aprobado" : "pendiente";
 
+    if (propiedades.length === 0) {
+  alert("Agrega al menos una propiedad");
+  setLoading(false);
+  return;
+}
+
+if (enfermedades.length === 0) {
+  alert("Agrega al menos una enfermedad");
+  setLoading(false);
+  return;
+}
+
+if (preparacion.length === 0) {
+  alert("Agrega al menos un paso de preparación");
+  setLoading(false);
+  return;
+}
+
   const { error } = await supabase.from("publicaciones").insert({
     user_id: user.id,
     nombre_planta: formData.name,
     nombre_cientifico: formData.scientificName,
     descripcion: formData.description,
-    propiedades: formData.properties.split(",").map(p => p.trim()),
-    enfermedades: formData.diseases.split(",").map(e => e.trim()),
-    preparacion: formData.preparations.split("\n"),
+    propiedades: propiedades,
+    enfermedades: enfermedades,
+    preparacion: preparacion,
     imagen_url: imageUrl,
     estado: estadoPublicacion
   });
@@ -125,6 +150,43 @@ export default function PublishPlant() {
   const removeImage = (index: number) => {
     setImages(images.filter((_, i) => i !== index));
   };
+
+  // PROPIEDADES
+const addPropiedad = () => {
+  if (!propInput.trim()) return;
+  setPropiedades([...propiedades, propInput]);
+  setPropInput("");
+};
+
+const removePropiedad = (i: number) => {
+  setPropiedades(propiedades.filter((_, index) => index !== i));
+};
+
+// ENFERMEDADES
+const addEnfermedad = () => {
+  if (!enfInput.trim()) return;
+  setEnfermedades([...enfermedades, enfInput]);
+  setEnfInput("");
+};
+
+const removeEnfermedad = (i: number) => {
+  setEnfermedades(enfermedades.filter((_, index) => index !== i));
+};
+
+// PREPARACIÓN
+const addPaso = () => {
+  setPreparacion([...preparacion, ""]);
+};
+
+const updatePaso = (i: number, value: string) => {
+  const nuevos = [...preparacion];
+  nuevos[i] = value;
+  setPreparacion(nuevos);
+};
+
+const removePaso = (i: number) => {
+  setPreparacion(preparacion.filter((_, index) => index !== i));
+};
 
   return (
     <div className="min-h-screen pb-24 md:pb-8">
@@ -235,60 +297,93 @@ export default function PublishPlant() {
               placeholder="Describe la planta, sus características y usos generales"
             />
           </div>
-
-          {/* Properties */}
+          
+          {/* PROPIEDADES (BURBUJAS) */}
           <div>
-            <label htmlFor="properties" className="block mb-2">
-              Propiedades Medicinales *
-            </label>
-            <textarea
-              id="properties"
-              required
-              value={formData.properties}
-              onChange={(e) => setFormData({...formData, properties: e.target.value})}
-              rows={3}
-              className="w-full px-4 py-3 bg-input-background rounded-xl border border-border focus:outline-none focus:ring-2 focus:ring-primary resize-none"
-              placeholder="Ej: Antiinflamatoria, Sedante, Digestiva (separar por comas)"
-            />
-            <p className="text-sm text-muted-foreground mt-1">
-              Separa cada propiedad con una coma
-            </p>
+          <label className="block mb-2">Propiedades Medicinales</label>
+
+          <div className="flex flex-wrap gap-2 mb-2">
+            {propiedades.map((p, i) => (
+              <div key={i} className="bg-green-100 dark:bg-green-800 px-3 py-1 rounded-full flex items-center gap-2">
+                {p}
+                <button type="button" onClick={() => removePropiedad(i)}>✕</button>
+              </div>
+            ))}
+
+            <button type="button" onClick={addPropiedad} className="bg-green-200 dark:bg-green-700 px-3 rounded-full">
+              +
+            </button>
           </div>
 
-          {/* Diseases */}
-          <div>
-            <label htmlFor="diseases" className="block mb-2">
-              Enfermedades que Trata *
-            </label>
-            <textarea
-              id="diseases"
-              required
-              value={formData.diseases}
-              onChange={(e) => setFormData({...formData, diseases: e.target.value})}
-              rows={3}
-              className="w-full px-4 py-3 bg-input-background rounded-xl border border-border focus:outline-none focus:ring-2 focus:ring-primary resize-none"
-              placeholder="Ej: insomnio, ansiedad, dolor de estómago (separar por comas)"
-            />
-            <p className="text-sm text-muted-foreground mt-1">
-              Separa cada enfermedad con una coma
-            </p>
+          <input
+            value={propInput}
+            onChange={(e) => setPropInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addPropiedad();
+                }
+              }}
+            className="w-full px-4 py-2 border rounded-xl"
+            placeholder="Presiona ENTER o + para agregar"
+          />
+        </div>
+
+        {/* ENFERMEDADES (BURBUJAS) */}
+        <div>
+          <label className="block mb-2">Enfermedades</label>
+
+          <div className="flex flex-wrap gap-2 mb-2">
+            {enfermedades.map((e, i) => (
+              <div key={i} className="bg-green-100 dark:bg-green-800 px-3 py-1 rounded-full flex items-center gap-2">
+                {e}
+                <button type="button" onClick={() => removeEnfermedad(i)}>✕</button>
+              </div>
+            ))}
+
+            <button type="button" onClick={addEnfermedad} className="bg-green-200 dark:bg-green-700 px-3 rounded-full">
+              +
+            </button>
           </div>
 
-          {/* Preparations */}
-          <div>
-            <label htmlFor="preparations" className="block mb-2">
-              Formas de Preparación *
-            </label>
-            <textarea
-              id="preparations"
-              required
-              value={formData.preparations}
-              onChange={(e) => setFormData({...formData, preparations: e.target.value})}
-              rows={4}
-              className="w-full px-4 py-3 bg-input-background rounded-xl border border-border focus:outline-none focus:ring-2 focus:ring-primary resize-none"
-              placeholder="Describe cómo preparar y utilizar esta planta medicinal. Puedes incluir múltiples métodos."
-            />
-          </div>
+          <input
+            value={enfInput}
+            onChange={(e) => setEnfInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  addEnfermedad();
+                }
+              }}
+            className="w-full px-4 py-2 border rounded-xl"
+            placeholder="Presiona ENTER o + para agregar"
+          />
+        </div>
+
+        {/* PREPARACIÓN (LISTA) */}
+        <div>
+          <label className="block mb-2">Preparación</label>
+
+          {preparacion.map((paso, i) => (
+            <div key={i} className="flex items-center gap-2 mb-2">
+              <span className="bg-green-600 text-white w-6 h-6 flex items-center justify-center rounded-full">
+                {i + 1}
+              </span>
+
+              <input
+                value={paso}
+                onChange={(e) => updatePaso(i, e.target.value)}
+                className="flex-1 px-3 py-2 border rounded-xl"
+              />
+
+              <button type="button" onClick={() => removePaso(i)}>✕</button>
+            </div>
+          ))}
+
+          <button type="button" onClick={addPaso} className="bg-green-200 dark:bg-green-700 px-3 py-1 rounded">
+            + Añadir paso
+          </button>
+        </div>
 
           {/* Submit Button */}
           <div className="flex gap-4 pt-4">

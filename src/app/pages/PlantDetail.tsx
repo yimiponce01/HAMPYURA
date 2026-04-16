@@ -167,9 +167,13 @@ export default function PlantDetail() {
             <h3 className="mb-3">Propiedades Medicinales</h3>
             <div className="flex flex-wrap gap-2">
               {(plant.propiedades || []).map((p: string, i: number) => (
-                <span 
-                  key={i}>{p}
-
+                <span
+                  key={i}
+                  className="px-3 py-1 text-sm rounded-full 
+                  bg-green-200 text-green-700 
+                  dark:bg-green-700 dark:text-white"
+                >
+                  {p}
                 </span>
               ))}
             </div>
@@ -180,11 +184,15 @@ export default function PlantDetail() {
             <h3 className="mb-3">Trata estas Enfermedades</h3>
             <div className="flex flex-wrap gap-2">
               {(plant.enfermedades || []).map((d: string, i: number) => (
-                <span 
-                  key={i}>{d}
-                
-                </span>
-              ))}
+                  <span
+                    key={i}
+                    className="px-3 py-1 text-sm rounded-full 
+                    bg-green-300 text-green-800 
+                    dark:bg-green-600 dark:text-white"
+                  >
+                    {d}
+                  </span>
+                ))}
             </div>
           </div>
 
@@ -193,7 +201,17 @@ export default function PlantDetail() {
             <h3 className="mb-3">Formas de Preparación</h3>
             <div className="space-y-3">
               {(plant.preparacion || []).map((prep: string, i: number) => (
-                <div key={i}>{prep}</div>
+                <div key={i} className="flex items-start gap-3">
+                  
+                  <div className="w-6 h-6 flex items-center justify-center rounded-full bg-primary text-white text-xs font-bold">
+                    {i + 1}
+                  </div>
+
+                  <p className="text-sm text-muted-foreground">
+                    {prep}
+                  </p>
+
+                </div>
               ))}
             </div>
           </div>
