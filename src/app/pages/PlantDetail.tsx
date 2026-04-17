@@ -14,7 +14,7 @@ import { toast } from "sonner";
   nombre_planta: string;
   nombre_cientifico?: string;
   descripcion: string;
-  imagen_url: string;
+  imagenes: string[];
   propiedades: string[];
   enfermedades: string[];
   preparacion: string[];
@@ -23,8 +23,9 @@ import { toast } from "sonner";
 };
 
 export default function PlantDetail() {
+
+  
   const { id } = useParams();
-  const [plant, setPlant] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
 
@@ -93,8 +94,8 @@ export default function PlantDetail() {
   const [isLiked, setIsLiked] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const { requireAuth } = useAuth();
-  
-
+  const [plant, setPlant] = useState<Plant | null>(null);
+  const [currentIndex, setCurrentIndex] = useState(0);
 
   if (loading) {
   return (
@@ -111,12 +112,6 @@ if (!plant) {
     </div>
   );
 }
-
-console.log("PLANT COMPLETA:", plant);
-console.log("PROPIEDADES:", plant.propiedades);
-console.log("ENFERMEDADES:", plant.enfermedades);
-console.log("PREPARACION:", plant.preparacion);
-
 
   const handleRate = (rating: number) => {
     if (requireAuth()) {
@@ -170,15 +165,6 @@ console.log("PREPARACION:", plant.preparacion);
     }
   };
 
-      const editarComentario = async (id: string, nuevoTexto: string) => {
-    const { error } = await supabase
-      .from("comentarios")
-      .update({ contenido: nuevoTexto })
-      .eq("id", id);
-
-    if (!error) fetchComentarios();
-  };
-
   const eliminarComentario = async (id: string) => {
     const { error } = await supabase
       .from("comentarios")
@@ -198,6 +184,22 @@ console.log("PREPARACION:", plant.preparacion);
     }
   }
 
+  console.log(plant.imagenes);
+
+  
+  const visibleCount = window.innerWidth >= 768 ? 4 : 2;
+
+  const next = () => {
+    if (currentIndex < plant.imagenes.length - visibleCount) {
+      setCurrentIndex(prev => prev + 1);
+    }
+  };
+
+  const prev = () => {
+    if (currentIndex > 0) {
+      setCurrentIndex(prev => prev - 1);
+    }
+  };
   return (
     <div className="min-h-screen pb-24 md:pb-8">
       {/* Header */}
@@ -232,15 +234,50 @@ console.log("PREPARACION:", plant.preparacion);
 
       <div className="max-w-4xl mx-auto px-4 py-6">
         {/* Images */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          <div className="mb-6">
-            <img
-              src={plant.imagen_url || "https://via.placeholder.com/400x300"}
-              className="w-full h-64 md:h-80 object-cover rounded-2xl"
-            />
-          </div>
-            
+        <div className="flex gap-4 justify-center md:justify-start w-full">
+          <div className="w-full max-w-7xl mx-auto px-6 py-6">
 
+            <div className="relative w-full overflow-hidden">
+              {/* BOTÓN IZQUIERDA */}
+              {currentIndex > 0 && (
+                <button
+                  onClick={prev}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 z-10 bg-black/50 text-white px-3 py-2 rounded-full"
+                >
+                  ❮
+                </button>
+              )}
+
+              {/* CARRUSEL */}
+              <div
+                className="flex gap-4 transition-transform duration-300"
+                style={{
+                  transform: `translateX(-${(currentIndex * 100) / visibleCount}%)`
+                }}
+              >
+                {Array.isArray(plant?.imagenes) &&
+                  plant.imagenes.map((img: string, i: number) => (
+                    <img
+                      key={i}
+                      src={img}
+                      className="min-w-[40%] md:min-w-[30%] lg:min-w-[25%] h-72 object-cover rounded-2xl flex-shrink-0"
+                    />
+                  ))}
+              </div>
+
+              {/* BOTÓN DERECHA */}
+              {plant?.imagenes &&
+                currentIndex < plant.imagenes.length - visibleCount && (
+                  <button
+                    onClick={next}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 z-10 bg-black/50 text-white px-3 py-2 rounded-full"
+                  >
+                    ❯
+                  </button>
+                )}
+            </div>
+
+          </div>
         </div>
 
         {/* Info */}
@@ -377,9 +414,10 @@ console.log("PREPARACION:", plant.preparacion);
                           {(esPropio || esAdmin) && (
                             <div className="flex gap-2 mt-2">
                               <button
-                                onClick={() => {
-                                  const nuevo = prompt("Editar comentario:", comentario.contenido);
-                                  if (nuevo) editarComentario(comentario.id, nuevo);
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  e.stopPropagation();
+                                  navigate(`/edit/${plant.id}`);
                                 }}
                                 className="text-xs text-blue-600 hover:underline"
                               >

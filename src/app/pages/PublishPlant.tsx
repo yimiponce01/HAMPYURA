@@ -11,22 +11,20 @@ export default function PublishPlant() {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const { requireAuth, user } = useAuth();
-  const [formData, setFormData] = useState({
-    name: '',
-    scientificName: '',
-    description: '',
-    
-  });
   const [images, setImages] = useState<File[]>([]);
+  const [nombre_planta, setNombrePlanta] = useState("");
+  const [nombre_cientifico, setNombreCientifico] = useState("");
+  const [descripcion, setDescripcion] = useState("");
+  
 
   // 🔥 NUEVO SISTEMA DINÁMICO
   const [propiedades, setPropiedades] = useState<string[]>([]);
   const [propInput, setPropInput] = useState("");
-
   const [enfermedades, setEnfermedades] = useState<string[]>([]);
   const [enfInput, setEnfInput] = useState("");
-
   const [preparacion, setPreparacion] = useState<string[]>([]);
+  const [imagenes, setImagenes] = useState<string[]>([]);
+
 
   // Verificar autenticación
   if (!requireAuth()) {
@@ -49,107 +47,92 @@ export default function PublishPlant() {
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setLoading(true); // 🔥 AQUÍ
+    e.preventDefault();
+    setLoading(true);
 
-  let imageUrl = "";
+    let imageUrls: string[] = [];
 
-  if (images.length > 0) {
-    const file = images[0];
+    // 🔥 SUBIR TODAS LAS IMÁGENES
+    for (const file of images) {
+      const fileName = `${Date.now()}-${file.name}`;
 
-    console.log("ARCHIVO:", file); // 👈 IMPORTANTE
-
-    if (file) {
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${Date.now()}.${fileExt}`;
-
-      const { data, error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from("plantas")
         .upload(fileName, file);
 
       if (uploadError) {
         console.error("ERROR SUBIENDO:", uploadError);
-      } else {
-        const { data: publicUrlData } = supabase.storage
-          .from("plantas")
-          .getPublicUrl(fileName);
+        continue;
+      }
 
-        imageUrl = publicUrlData.publicUrl;
+      const { data: publicUrlData } = supabase.storage
+        .from("plantas")
+        .getPublicUrl(fileName);
 
-        console.log("URL GENERADA:", imageUrl); // 👈 CLAVE
+      const url = publicUrlData.publicUrl;
 
-        if (!imageUrl) {
-          alert("La imagen no se pudo subir correctamente");
-          setLoading(false);
-          return;
-        }
+      if (url) {
+        imageUrls.push(url);
       }
     }
-  }
 
-  if (!user) return;
+    console.log("IMAGENES SUBIDAS:", imageUrls);
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("rol")
-    .eq("email", user.email)
-    .maybeSingle();
+    // 🚨 VALIDACIÓN
+    if (imageUrls.length === 0) {
+      alert("No se subió ninguna imagen");
+      setLoading(false);
+      return;
+    }
 
-  const estadoPublicacion =
-    profile?.rol === "admin" ? "aprobado" : "pendiente";
-
-    if (propiedades.length === 0) {
-  alert("Agrega al menos una propiedad");
-  setLoading(false);
-  return;
-}
-
-if (enfermedades.length === 0) {
-  alert("Agrega al menos una enfermedad");
-  setLoading(false);
-  return;
-}
-
-if (preparacion.length === 0) {
-  alert("Agrega al menos un paso de preparación");
-  setLoading(false);
-  return;
-}
-
-  const { error } = await supabase.from("publicaciones").insert({
-    user_id: user.id,
-    nombre_planta: formData.name,
-    nombre_cientifico: formData.scientificName,
-    descripcion: formData.description,
-    propiedades: propiedades,
-    enfermedades: enfermedades,
-    preparacion: preparacion,
-    imagen_url: imageUrl,
-    estado: estadoPublicacion
-  });
-
-  setLoading(false); // 🔥 AQUÍ
-
-  if (error) {
-    console.error(error);
-    alert(error.message);
+      if (!user) {
+    alert("Debes iniciar sesión");
+    setLoading(false);
     return;
   }
 
-  toast.success("Publicación creada correctamente 🌿");
-  navigate("/");
-};
+  if (!nombre_planta || !descripcion) {
+    toast.error("Completa los campos obligatorios");
+    setLoading(false);
+    return;
+  }
+
+    // 🔥 GUARDAR EN BD
+    const { error } = await supabase.from("publicaciones").insert({
+      nombre_planta,
+      nombre_cientifico,
+      descripcion,
+      propiedades,
+      enfermedades,
+      preparacion,
+      imagenes: imageUrls, // ✅ ARRAY
+      estado: "pendiente",
+      user_id: user.id
+    });
+
+    if (error) {
+    console.error(error);
+    toast.error("Error al publicar ❌");
+  } else {
+    toast.success("🌿 Publicación enviada", {
+      description: "El admin la revisará pronto",
+    });
+    navigate("/profile");
+  }
+
+    setLoading(false);
+  };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
   const files = e.target.files;
   if (files) {
-    setImages(Array.from(files));
+    setImages((prev) => [...prev, ...Array.from(files)]);
   }
 };
 
   const removeImage = (index: number) => {
-    setImages(images.filter((_, i) => i !== index));
-  };
+  setImages((prev) => prev.filter((_, i) => i !== index));
+};
 
   // PROPIEDADES
 const addPropiedad = () => {
@@ -199,7 +182,7 @@ const removePaso = (i: number) => {
           >
             <ArrowLeft className="w-5 h-5" />
           </button>
-          <h2>Publicar Planta</h2>
+          
           <div className="w-10" />
         </div>
       </div>
@@ -212,44 +195,59 @@ const removePaso = (i: number) => {
           animate={{ opacity: 1, y: 0 }}
         >
           {/* Images Upload */}
-          <div>
-            <label className="block mb-3">
-              Imágenes de la Planta
-            </label>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
-              {images.map((image, index) => (
-                <div key={index} className="relative aspect-square rounded-xl overflow-hidden bg-secondary">
-                  <img 
-                      src={URL.createObjectURL(image)} 
-                      alt={`Imagen ${index + 1}`} 
-                      className="w-full h-full object-cover" 
-                    />
-                  <button
-                    type="button"
-                    onClick={() => removeImage(index)}
-                    className="absolute top-2 right-2 bg-destructive text-destructive-foreground p-1 rounded-full"
-                  >
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              ))}
-              
-              <label className="aspect-square rounded-xl border-2 border-dashed border-border hover:border-primary flex flex-col items-center justify-center cursor-pointer transition-colors">
-                <Upload className="w-8 h-8 text-muted-foreground mb-2" />
-                <span className="text-sm text-muted-foreground">Subir</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  multiple
-                  onChange={handleImageUpload}
-                  className="hidden"
-                />
-              </label>
-            </div>
-            <p className="text-sm text-muted-foreground">
-              Sube hasta 4 imágenes de la planta
-            </p>
-          </div>
+<div>
+  <label className="block mb-3">
+    Imágenes de la Planta
+  </label>
+
+  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+    
+    {/* PREVIEW DE IMÁGENES */}
+    {images.map((image, index) => (
+      <div key={index} className="relative aspect-square rounded-xl overflow-hidden bg-secondary">
+        <img 
+          src={URL.createObjectURL(image)} 
+          alt={`Imagen ${index + 1}`} 
+          className="w-full h-full object-cover" 
+        />
+
+        <button
+          type="button"
+          onClick={() => removeImage(index)}
+          className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full"
+        >
+          ✕
+        </button>
+      </div>
+    ))}
+
+    {/* BOTÓN SUBIR */}
+    <label className="aspect-square rounded-xl border-2 border-dashed border-border hover:border-primary flex flex-col items-center justify-center cursor-pointer transition-colors">
+      <Upload className="w-8 h-8 text-muted-foreground mb-2" />
+      <span className="text-sm text-muted-foreground">Subir</span>
+
+      <input
+        type="file"
+        accept="image/*"
+        multiple
+        onChange={(e) => {
+          if (!e.target.files) return;
+
+          const files = Array.from(e.target.files);
+
+          // 🔥 IMPORTANTE: ACUMULA, NO REEMPLAZA
+          setImages((prev) => [...prev, ...files]);
+        }}
+        className="hidden"
+      />
+    </label>
+
+  </div>
+
+  <p className="text-sm text-muted-foreground">
+    Puedes subir varias imágenes (máx recomendado: 4)
+  </p>
+</div>
 
           {/* Name */}
           <div>
@@ -260,8 +258,8 @@ const removePaso = (i: number) => {
               id="name"
               type="text"
               required
-              value={formData.name}
-              onChange={(e) => setFormData({...formData, name: e.target.value})}
+              value={nombre_planta}
+              onChange={(e) => setNombrePlanta(e.target.value)}
               className="w-full px-4 py-3 bg-input-background rounded-xl border border-border focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="Ej: Manzanilla"
             />
@@ -275,8 +273,8 @@ const removePaso = (i: number) => {
             <input
               id="scientificName"
               type="text"
-              value={formData.scientificName}
-              onChange={(e) => setFormData({...formData, scientificName: e.target.value})}
+              value={nombre_cientifico}
+              onChange={(e) => setNombreCientifico(e.target.value)}
               className="w-full px-4 py-3 bg-input-background rounded-xl border border-border focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="Ej: Matricaria chamomilla"
             />
@@ -290,8 +288,8 @@ const removePaso = (i: number) => {
             <textarea
               id="description"
               required
-              value={formData.description}
-              onChange={(e) => setFormData({...formData, description: e.target.value})}
+              value={descripcion}
+              onChange={(e) => setDescripcion(e.target.value)}
               rows={4}
               className="w-full px-4 py-3 bg-input-background rounded-xl border border-border focus:outline-none focus:ring-2 focus:ring-primary resize-none"
               placeholder="Describe la planta, sus características y usos generales"

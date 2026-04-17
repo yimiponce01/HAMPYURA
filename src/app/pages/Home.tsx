@@ -188,7 +188,7 @@ export default function Home() {
                     nombre_planta: plant.nombre_planta,
                     nombre_cientifico: plant.nombre_cientifico,
                     descripcion: plant.descripcion,
-                    imagen_url: plant.imagen_url,
+                    imagenes: plant.imagenes,
                     enfermedades: plant.enfermedades || [],
                     propiedades: plant.propiedades || [],
                     preparacion: plant.preparacion || [],

@@ -7,8 +7,10 @@ interface Post {
     id: string;
     nombre_planta: string;
     descripcion: string;
-    imagen_url: string;
+    imagenes: string[];
     }
+
+    
 
     export default function AdminModeration() {
     const navigate = useNavigate();
@@ -110,34 +112,43 @@ return (
                     {/* BOTONES */}
                     <div className="absolute top-2 right-2 flex gap-2 z-10">
                         <button
-                        onClick={() => aprobar(post.id)}
-                        className="bg-green-500 text-white w-7 h-7 rounded-full flex items-center justify-center"
-                        >
-                        ✓
-                        </button>
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                aprobar(post.id);
+                            }}
+                            className="bg-green-500 text-white w-7 h-7 rounded-full flex items-center justify-center"
+                            >
+                            ✓
+                            </button>
 
-                        <button
-                        onClick={() => eliminar(post.id)}
-                        className="bg-red-500 text-white w-7 h-7 rounded-full flex items-center justify-center"
-                        >
-                        ✕
-                        </button>
+                            <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                eliminar(post.id);
+                            }}
+                            className="bg-red-500 text-white w-7 h-7 rounded-full flex items-center justify-center"
+                            >
+                            ✕
+                            </button>
                     </div>
 
                     {/* IMAGEN */}
                     <div className="h-32 overflow-hidden">
                         <img
-                        src={post.imagen_url}
+                        src={post.imagenes?.[0] }
                         className="w-full h-full object-cover"
                         />
                     </div>
 
                     {/* TEXTO */}
                     <div className="p-3">
-                        <h3 className="font-bold text-sm">{post.nombre_planta}</h3>
-                        <p className="text-xs text-gray-500 line-clamp-2">
+                    <h3 className="font-bold text-sm text-black">
+                        {post.nombre_planta}
+                    </h3>
+
+                    <p className="text-xs text-gray-500 dark:text-gray-300 line-clamp-2">
                         {post.descripcion}
-                        </p>
+                    </p>
                     </div>
 
                     </div>

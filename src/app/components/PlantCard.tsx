@@ -13,7 +13,7 @@ type Plant = {
   nombre_planta: string;
   nombre_cientifico?: string;
   descripcion: string;
-  imagen_url: string;
+  imagenes: string[];
   propiedades?: string[];
   enfermedades?: string[];
   preparacion?: string[];
@@ -68,7 +68,7 @@ export function PlantCard({ plant }: PlantCardProps) {
           
           <div className="relative h-48 overflow-hidden bg-secondary">
             <img 
-              src={plant.imagen_url || "https://via.placeholder.com/400x300"}
+              src={plant.imagenes?.[0] || "https://via.placeholder.com/400x300"}
               alt={plant.nombre_planta}
               className="w-full h-full object-cover"
             />

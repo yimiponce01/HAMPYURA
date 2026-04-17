@@ -4,14 +4,20 @@ import { useAuth } from '../contexts/AuthContext';
 import { motion } from 'motion/react';
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-
+import { toast } from "sonner"; 
 
 
 export default function Profile() {
 
   const { user, isAuthenticated, logout } = useAuth();
   const [userPlants, setUserPlants] = useState<any[]>([]);
-
+  const [misPublicaciones, setMisPublicaciones] = useState<any[]>([]);
+  const [menuOpen, setMenuOpen] = useState<string | null>(null);
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [plantToEdit, setPlantToEdit] = useState<any>(null);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [plantToDelete, setPlantToDelete] = useState<string | null>(null);
+  
   useEffect(() => {
     if (!user) return; // 🔥 evita error
 
@@ -34,6 +40,7 @@ export default function Profile() {
   }, [user]);
 
   const navigate = useNavigate();
+
 
   if (!isAuthenticated || !user) {
     return (
@@ -66,6 +73,54 @@ export default function Profile() {
     logout();
     navigate('/');
   };
+
+  
+    const toggleMenu = (id: string) => {
+    setMenuOpen(menuOpen === id ? null : id);
+  };
+
+  const editarPublicacion = (plant: any) => {
+    setPlantToEdit(plant);
+    setShowEditModal(true);
+  };
+
+const eliminarPublicacion = async (id: string) => {
+  const confirmDelete = confirm("¿Eliminar publicación?");
+  if (!confirmDelete) return;
+
+  const { error } = await supabase
+    .from("publicaciones")
+    .delete()
+    .eq("id", id);
+
+  if (!error) {
+    setMisPublicaciones(prev => prev.filter(p => p.id !== id));
+  }
+};
+
+const confirmarEliminacion = async () => {
+  if (!plantToDelete) return;
+
+  const { error } = await supabase
+    .from("publicaciones")
+    .delete()
+    .eq("id", plantToDelete);
+
+  if (!error) {
+    setMisPublicaciones(prev =>
+      prev.filter(p => p.id !== plantToDelete)
+    );
+
+    setUserPlants((prev) =>
+      prev.filter((p) => p.id !== plantToDelete)
+    );
+
+    setShowDeleteModal(false);
+    setPlantToDelete(null);
+
+    toast.success("Publicación eliminada 🗑️");
+  }
+};
 
   return (
     <div className="min-h-screen pb-24 md:pb-8">
@@ -212,11 +267,11 @@ export default function Profile() {
               <Link
                 key={plant.id}
                 to={`/plant/${plant.id}`}
-                className="bg-card rounded-xl overflow-hidden border border-border hover:shadow-md transition-shadow"
+                className="bg-card rounded-xl overflow-visible border border-border hover:shadow-md transition-shadow"
               >
                 <div className="h-32 overflow-hidden bg-secondary">
                   <img
-                    src={plant.imagen_url || "https://via.placeholder.com/300"}
+                    src={plant.imagenes?.[0] || "https://via.placeholder.com/300"}
                     alt={plant.nombre_planta}
                     className="w-full h-full object-cover"
                   />
@@ -229,24 +284,108 @@ export default function Profile() {
                     {plant.descripcion}
                   </p>
 
-                  <div className="flex items-center gap-4 mt-3 text-sm text-muted-foreground">
+                  <div className="flex items-center justify-between mt-2">
 
-                    {/* ❤️ likes fake visual */}
-                    <span>❤️ 0</span>
-
-                    {/* ⭐ rating visual */}
+                  {/* IZQUIERDA */}
+                  <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                    <span>❤️ {plant.likes || 0}</span>
                     <span>⭐ 5.0</span>
-
-                    {/* 💬 comentarios fake */}
                     <span>💬 0</span>
-
                   </div>
+
+                  
+
+                  {/* DERECHA (3 puntitos) */}
+                  <div className="relative">
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();     // 🚫 evita que el Link navegue
+                        e.stopPropagation();    // 🚫 evita que el click suba al Link
+                        toggleMenu(plant.id);
+                      }}
+                      className="p-2 rounded-full hover:bg-secondary"
+                    >
+                      ⋮
+                    </button>
+
+                    {menuOpen === plant.id && (
+                      <div className="absolute right-0 bottom-full mb-2 w-36 bg-card border border-border rounded-xl shadow-xl z-[999]">
+                        
+                        <button
+                            onClick={(e) => {
+                              e.preventDefault(); // 🚫 evita que el Link navegue
+                              e.stopPropagation();
+                              navigate(`/edit/${plant.id}`);
+                            }}
+                            className="block w-full text-left px-3 py-2 hover:bg-secondary text-sm text-black-500"
+                          >
+                          ✏️ Editar
+                        </button>
+
+                        <button
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setPlantToDelete(plant.id);
+                            setShowDeleteModal(true);
+                          }}
+                          className="block w-full text-left px-3 py-2 hover:bg-secondary text-sm text-red-500"
+                        >
+                          🗑 Eliminar
+                        </button>
+
+                      </div>
+                    )}
+                  </div>
+
+                </div>
                 </div>
               </Link>
             ))}
           </div>
         )}
       </div>
+      
+      
+
+      {/* MODAL ELIMINAR */}
+      {showDeleteModal && (
+        <div
+          className="fixed inset-0 bg-black/50 z-[9999] flex items-center justify-center"
+          onClick={() => setShowDeleteModal(false)}
+        >
+          <div
+            className="bg-card p-6 rounded-2xl w-[320px] shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="mb-2">¿Eliminar publicación?</h3>
+
+            <p className="text-sm text-muted-foreground mb-4">
+              Esta acción no se puede deshacer.
+            </p>
+
+            <div className="flex justify-end gap-2">
+              
+              <button
+                onClick={() => setShowDeleteModal(false)}
+                className="px-4 py-2 rounded-lg bg-secondary text-muted-foreground hover:bg-muted"
+              >
+                Cancelar
+              </button>
+
+              <button
+                onClick={confirmarEliminacion}
+                className="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600"
+              >
+                Eliminar
+              </button>
+
+            </div>
+          </div>
+        </div>
+
+        
+      )}
     </div>
   );
 }

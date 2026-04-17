@@ -14,6 +14,7 @@ import Notifications from './pages/Notifications';
 import NotFound from './pages/NotFound';
 import Layout from './components/Layout';
 import AdminModeration from "./pages/AdminModeration";
+import PlantEdit from './pages/PlantEdit';
 
 
 export const router = createHashRouter([
@@ -24,6 +25,7 @@ export const router = createHashRouter([
       { index: true, element: <Home /> },
       { path: 'plant/:id', element: <PlantDetail /> },
       { path: 'publish', element: <PublishPlant /> },
+      { path: 'edit/:id', element: <PlantEdit /> },
       { path: 'profile', element: <Profile /> },
       { path: 'edit-profile', element: <EditProfile /> },
       { path: 'articles', element: <Articles /> },
