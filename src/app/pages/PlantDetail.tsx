@@ -27,7 +27,9 @@ export default function PlantDetail() {
   
   const { id } = useParams();
   const [loading, setLoading] = useState(true);
+  const [miPerfil, setMiPerfil] = useState<any>(null);
 
+  
 
   const fetchComentarios = async () => {
         const { data, error } = await supabase
@@ -46,6 +48,26 @@ export default function PlantDetail() {
 
         if (!error) setComentarios(data || []);
       };
+
+    const guardarEdicion = async (id: string) => {
+    const { data, error } = await supabase
+      .from("comentarios")
+      .update({ contenido: textoEditado })
+      .eq("id", id)
+      .select(); // 👈 IMPORTANTE
+
+    console.log("UPDATE RESULT:", data);
+    console.log("UPDATE ERROR:", error);
+
+    if (!error) {
+      setEditandoId(null);
+      setComentarios(prev =>
+      prev.map(c =>
+        c.id === id ? { ...c, contenido: textoEditado } : c
+      )
+    );
+    }
+  };
 
 
     useEffect(() => {
@@ -96,6 +118,30 @@ export default function PlantDetail() {
   const { requireAuth } = useAuth();
   const [plant, setPlant] = useState<Plant | null>(null);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [textoEditado, setTextoEditado] = useState("");
+
+  useEffect(() => {
+  const fetchPerfil = async () => {
+    if (!user) return;
+
+    const { data } = await supabase
+      .from("perfiles")
+      .select("*")
+      .eq("id", user.id)
+      .single();
+
+    setMiPerfil(data);
+  };
+
+  fetchPerfil();
+}, [user]);
+
+  useEffect(() => {
+    if (id) {
+      fetchComentarios();
+    }
+  }, [id]);
 
   if (loading) {
   return (
@@ -185,6 +231,8 @@ if (!plant) {
     }
   }
 
+
+
   console.log(plant.imagenes);
 
   
@@ -201,6 +249,11 @@ if (!plant) {
       setCurrentIndex(prev => prev - 1);
     }
   };
+
+  
+
+  const esAdmin = miPerfil?.rol === "admin";
+
   return (
     <div className="min-h-screen pb-24 md:pb-8">
       {/* Header */}
@@ -380,7 +433,28 @@ if (!plant) {
               <div className="mt-4">
                 {comentarios.map((comentario: any) => {
                     const esPropio = user?.id === comentario.user_id;
-                    const esAdmin = comentario.perfiles?.rol === "admin";
+const esAdmin = miPerfil?.rol === "admin";
+
+{(esPropio || esAdmin) && (
+  <div className="flex gap-2 mt-2">
+    <button
+      onClick={() => {
+      setEditandoId(comentario.id);
+      setTextoEditado(comentario.contenido);
+    }}
+      className="text-xs text-green-600 hover:underline"
+    >
+      Editar
+    </button>
+
+    <button
+      onClick={() => eliminarComentario(comentario.id)}
+      className="text-xs text-red-600 hover:underline"
+    >
+      Eliminar
+    </button>
+  </div>
+)}
 
                     return (
                       <div key={comentario.id} className="flex gap-3 mb-4">
@@ -414,19 +488,44 @@ if (!plant) {
                             )}
                           </div>
 
+                          {editandoId === comentario.id ? (
+                          <div className="mt-2">
+                            <input
+                              value={textoEditado}
+                              onChange={(e) => setTextoEditado(e.target.value)}
+                              className="w-full px-3 py-2 rounded-lg bg-input-background border border-border"
+                            />
+
+                            <div className="flex gap-2 mt-2">
+                              <button
+                                onClick={() => guardarEdicion(comentario.id)}
+                                className="text-xs text-green-600"
+                              >
+                                Guardar
+                              </button>
+
+                              <button
+                                onClick={() => setEditandoId(null)}
+                                className="text-xs text-gray-500"
+                              >
+                                Cancelar
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
                           <p className="text-sm mt-1">
                             {comentario.contenido}
                           </p>
+                        )}
 
                           {(esPropio || esAdmin) && (
                             <div className="flex gap-2 mt-2">
                               <button
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  e.stopPropagation();
-                                  navigate(`/edit/${plant.id}`);
+                                onClick={() => {
+                                  setEditandoId(comentario.id);
+                                  setTextoEditado(comentario.contenido);
                                 }}
-                                className="text-xs text-blue-600 hover:underline"
+                                className="text-xs text-green-600 hover:underline"
                               >
                                 Editar
                               </button>
