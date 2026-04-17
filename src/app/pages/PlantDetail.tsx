@@ -20,6 +20,12 @@ import { toast } from "sonner";
   preparacion: string[];
   likes?: number;
   comments?: any[];
+
+  // 👇 AGREGA ESTO
+  perfiles?: {
+    nombre?: string;
+    region?: string;
+  };
 };
 
 export default function PlantDetail() {
@@ -47,7 +53,9 @@ export default function PlantDetail() {
           .order("created_at", { ascending: false });
 
         if (!error) setComentarios(data || []);
+        
       };
+      
 
     const guardarEdicion = async (id: string) => {
     const { data, error } = await supabase
@@ -76,12 +84,19 @@ export default function PlantDetail() {
 
         const { data, error } = await supabase
           .from("publicaciones")
-          .select("*")
+          .select(`
+            *,
+            perfiles (
+              nombre,
+              region
+            )
+          `)
           .eq("id", id)
           .single();
 
           console.log("PLANT DATA:", data);
           console.log("PLANT ERROR:", error);
+          console.log(data);
 
           if (!error && data) {
             setPlant(data);
@@ -125,11 +140,16 @@ export default function PlantDetail() {
   const fetchPerfil = async () => {
     if (!user) return;
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("perfiles")
       .select("*")
       .eq("id", user.id)
       .single();
+
+    if (error) {
+      console.error("Error perfil:", error);
+      return;
+    }
 
     setMiPerfil(data);
   };
@@ -419,8 +439,15 @@ if (!plant) {
           {/* Author */}
           <div className="mb-6 p-4 bg-secondary rounded-xl">
             <p className="text-sm text-muted-foreground">
-              Publicado recientemente🌿
-              </p>
+              Publicado por{" "}
+              <span className="font-semibold text-foreground">
+                {plant.perfiles?.nombre || "Usuario"}
+              </span>{" "}
+              desde{" "}
+              <span className="font-semibold text-foreground">
+                {plant.perfiles?.region || "desconocido"}
+              </span> 🌿
+            </p>
           </div>
 
           {/* Comments Section */}
@@ -478,7 +505,7 @@ const esAdmin = miPerfil?.rol === "admin";
                             </span>
 
                             <span className="text-xs px-2 py-0.5 rounded-full bg-green-100 text-green-700 dark:bg-green-800 dark:text-white">
-                              {comentario.perfiles?.region || "sin región"}
+                              {comentario.perfiles?.region ? comentario.perfiles.region : "Sin región"}
                             </span>
 
                             {comentario.perfiles?.rol === "admin" && (

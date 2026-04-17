@@ -12,6 +12,7 @@ export default function EditProfile() {
   const [formData, setFormData] = useState({
     name: user?.name || '',
     email: user?.email || '',
+    region: '',
     bio: user?.bio || '',
     avatar: user?.avatar || ''
   });
@@ -26,7 +27,8 @@ export default function EditProfile() {
       .update({
         nombre: formData.name,
         email: formData.email,
-        foto_url: formData.avatar
+        foto_url: formData.avatar,
+        region: formData.region
       })
       .eq("id", user.id);
 
@@ -162,6 +164,23 @@ export default function EditProfile() {
               className="w-full px-4 py-3 bg-input-background rounded-xl border border-border focus:outline-none focus:ring-2 focus:ring-primary"
             />
           </div>
+
+          {/* Region */}
+          <div>
+          <label className="block mb-2 text-sm">Región</label>
+          <select
+            value={formData.region || ""}
+            onChange={(e) =>
+              setFormData({ ...formData, region: e.target.value })
+            }
+            className="w-full px-4 py-3 bg-input-background rounded-xl border border-border"
+          >
+            <option value="">Selecciona tu región</option>
+            <option value="costa">Costa</option>
+            <option value="sierra">Sierra</option>
+            <option value="selva">Selva</option>
+          </select>
+        </div>
 
           {/* Bio */}
           <div>
