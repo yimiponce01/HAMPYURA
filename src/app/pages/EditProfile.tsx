@@ -8,6 +8,7 @@ import { toast } from "sonner";
 
 export default function EditProfile() {
   const { user, updateProfile } = useAuth();
+  const [miPerfil, setMiPerfil] = useState<any>(null);
   const navigate = useNavigate();
   const [formData, setFormData] = useState({
     name: user?.name || '',
@@ -19,24 +20,35 @@ export default function EditProfile() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
     if (!user) return;
 
-    const { error } = await supabase
-      .from("perfiles")
-      .update({
-        nombre: formData.name,
-        email: formData.email,
-        foto_url: formData.avatar,
-        region: formData.region
-      })
-      .eq("id", user.id);
+      // 🔥 construir objeto dinámico
+    const updateData: any = {
+      nombre: formData.name,
+      bio: formData.bio,
+    };
 
-    if (error) {
-      console.error(error);
-      toast.error("Error al actualizar perfil ❌");
-      return;
+    // ✅ SOLO actualizar región si tiene valor
+    if (formData.region && formData.region !== '') {
+      updateData.region = formData.region;
     }
+
+    // ✅ SOLO actualizar foto si hay
+    if (formData.avatar && formData.avatar !== '') {
+      updateData.foto_url = formData.avatar;
+    }
+    
+
+    const { error } = await supabase
+    .from("perfiles")
+    .update(updateData)
+    .eq("id", user.id);
+
+  if (error) {
+    console.error(error);
+    toast.error("Error al actualizar perfil ❌");
+    return;
+  }
 
     // 🔥 actualiza también el contexto (UI)
     updateProfile(formData);
@@ -71,17 +83,7 @@ export default function EditProfile() {
 
   const publicUrl = data.publicUrl;
 
-  // 🔥 guardar en tu tabla perfiles
-  const { error } = await supabase
-    .from("perfiles")
-    .update({ foto_url: publicUrl }) // 👈 tu columna
-    .eq("id", user.id);
 
-  if (error) {
-    console.error(error);
-    alert("Error al guardar en BD");
-    return;
-  }
 
   // 🔥 actualizar UI
   setFormData((prev) => ({

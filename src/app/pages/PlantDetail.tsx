@@ -136,6 +136,7 @@ export default function PlantDetail() {
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [textoEditado, setTextoEditado] = useState("");
 
+  
   useEffect(() => {
   const fetchPerfil = async () => {
     if (!user) return;
@@ -152,6 +153,8 @@ export default function PlantDetail() {
     }
 
     setMiPerfil(data);
+
+    
   };
 
   fetchPerfil();
