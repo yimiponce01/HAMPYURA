@@ -443,7 +443,7 @@ if (!plant) {
               <span className="font-semibold text-foreground">
                 {plant.perfiles?.nombre || "Usuario"}
               </span>{" "}
-              desde{" "}
+              desde la {" "}
               <span className="font-semibold text-foreground">
                 {plant.perfiles?.region || "desconocido"}
               </span> 🌿
