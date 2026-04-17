@@ -161,6 +161,7 @@ if (!plant) {
         .eq("publicacion_id", id)
         .order("created_at", { ascending: false });
 
+        console.log(data);
       setComentarios(data || []);
     }
   };
@@ -384,10 +385,16 @@ if (!plant) {
                     return (
                       <div key={comentario.id} className="flex gap-3 mb-4">
 
-                        <img
-                          src={comentario.perfiles?.foto_url || "https://via.placeholder.com/40"}
-                          className="w-10 h-10 rounded-full object-cover"
-                        />
+                        {comentario.perfiles?.foto_url ? (
+                          <img
+                            src={comentario.perfiles.foto_url}
+                            className="w-10 h-10 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-green-600 flex items-center justify-center text-white font-bold">
+                            {comentario.perfiles?.nombre?.[0]?.toUpperCase() || "U"}
+                          </div>
+                        )}
 
                         <div className="flex-1">
                           <div className="flex items-center gap-2">

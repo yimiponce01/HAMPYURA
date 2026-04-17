@@ -4,6 +4,7 @@ import { ArrowLeft, Camera } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { motion } from 'motion/react';
 import { supabase } from '../../lib/supabase';
+import { toast } from "sonner";
 
 export default function EditProfile() {
   const { user, updateProfile } = useAuth();
@@ -25,35 +26,67 @@ export default function EditProfile() {
       .update({
         nombre: formData.name,
         email: formData.email,
-        bio: formData.bio,
         foto_url: formData.avatar
       })
       .eq("id", user.id);
 
     if (error) {
       console.error(error);
-      alert("Error al actualizar perfil");
+      toast.error("Error al actualizar perfil ❌");
       return;
     }
 
     // 🔥 actualiza también el contexto (UI)
     updateProfile(formData);
 
-    alert("Perfil actualizado correctamente");
+    toast.success("Perfil actualizado correctamente 🌿", {
+      description: "Tu información se guardó correctamente"
+    });
     navigate("/profile");
   };
 
-  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      // En producción, aquí subirías la imagen
-      // Por ahora, usamos una URL de ejemplo
-      setFormData({
-        ...formData,
-        avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=200&h=200&fit=crop'
-      });
-    }
-  };
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const file = e.target.files?.[0];
+  if (!file || !user) return;
+
+  const fileName = `${user.id}-${Date.now()}`;
+
+  // 🔥 subir al bucket
+  const { error: uploadError } = await supabase.storage
+    .from("avatars") // 👈 este es el bucket (no tabla)
+    .upload(fileName, file, { upsert: true });
+
+  if (uploadError) {
+    console.error(uploadError);
+    alert("Error al subir imagen");
+    return;
+  }
+
+  // 🔥 obtener URL pública
+  const { data } = supabase.storage
+    .from("avatars")
+    .getPublicUrl(fileName);
+
+  const publicUrl = data.publicUrl;
+
+  // 🔥 guardar en tu tabla perfiles
+  const { error } = await supabase
+    .from("perfiles")
+    .update({ foto_url: publicUrl }) // 👈 tu columna
+    .eq("id", user.id);
+
+  if (error) {
+    console.error(error);
+    alert("Error al guardar en BD");
+    return;
+  }
+
+  // 🔥 actualizar UI
+  setFormData((prev) => ({
+    ...prev,
+    avatar: publicUrl
+  }));
+};
 
   return (
     <div className="min-h-screen pb-24 md:pb-8">
