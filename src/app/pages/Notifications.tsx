@@ -2,6 +2,8 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Check, X } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useState } from 'react';
+import { useEffect } from "react";
+import { supabase } from "../../lib/supabase";
 
 interface Notification {
   id: string;
@@ -12,60 +14,103 @@ interface Notification {
   read: boolean;
 }
 
-const mockNotifications: Notification[] = [
-  {
-    id: '1',
-    type: 'comment',
-    message: 'Carlos Ruiz comentó en tu publicación de Manzanilla',
-    plantId: '1',
-    createdAt: new Date('2026-03-06'),
-    read: false
-  },
-  {
-    id: '2',
-    type: 'like',
-    message: '15 personas dieron like a tu planta Eucalipto',
-    plantId: '2',
-    createdAt: new Date('2026-03-05'),
-    read: false
-  },
-  {
-    id: '3',
-    type: 'system',
-    message: 'Bienvenido a HAMPIYURA. Completa tu perfil para obtener más visibilidad',
-    createdAt: new Date('2026-03-04'),
-    read: true
-  }
-];
-
 export default function Notifications() {
   const navigate = useNavigate();
-  const [notifications, setNotifications] = useState(mockNotifications);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [user, setUser] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  const markAsRead = (id: string) => {
-    setNotifications(notifications.map(n => 
-      n.id === id ? { ...n, read: true } : n
-    ));
+  useEffect(() => {
+  const getUser = async () => {
+    const { data } = await supabase.auth.getUser();
+    setUser(data.user);
   };
 
-  const markAllAsRead = () => {
-    setNotifications(notifications.map(n => ({ ...n, read: true })));
-  };
+  getUser();
+}, []);
 
-  const deleteNotification = (id: string) => {
-    setNotifications(notifications.filter(n => n.id !== id));
-  };
+useEffect(() => {
+  const fetchNotifications = async () => {
+    setLoading(true); // 🔥 inicia carga
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+    const { data: userData } = await supabase.auth.getUser();
+    const user = userData.user;
 
-  const getNotificationIcon = (type: string) => {
-    switch (type) {
-      case 'comment': return '💬';
-      case 'like': return '❤️';
-      case 'system': return '🔔';
-      default: return '📌';
+    if (!user) {
+      setLoading(false);
+      return;
     }
+
+    const { data, error } = await supabase
+      .from("notificaciones")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+
+    if (!error) {
+      setNotifications(data || []);
+    }
+
+    setLoading(false); // 🔥 termina carga
   };
+
+  fetchNotifications();
+}, []);
+
+
+
+  const markAsRead = async (id: string) => {
+  await supabase
+    .from("notificaciones")
+    .update({ leido: true })
+    .eq("id", id);
+
+  setNotifications(prev =>
+    prev.map(n => n.id === id ? { ...n, leido: true } : n)
+  );
+};
+
+  const markAllAsRead = async () => {
+  if (!user) return;
+
+  await supabase
+    .from("notificaciones")
+    .update({ leido: true })
+    .eq("user_id", user.id);
+
+  setNotifications(prev =>
+    prev.map(n => ({ ...n, leido: true }))
+  );
+};
+
+  const deleteNotification = async (id: string) => {
+  await supabase
+    .from("notificaciones")
+    .delete()
+    .eq("id", id);
+
+  setNotifications(prev => prev.filter(n => n.id !== id));
+};
+
+window.dispatchEvent(new Event("notificationsUpdated"));
+
+  const unreadCount = notifications.filter(n => !n.leido).length;
+
+const getMessage = (n: any) => {
+  if (n.tipo === "like") return "Alguien dio like a tu publicación";
+  if (n.tipo === "comment") return "Comentaron tu publicación";
+  if (n.tipo === "rating") return "Calificaron tu planta";
+  if (n.tipo === "system") return "Bienvenido a HAMPIYURA. Completa tu perfil";
+  return "📌 Nueva notificación";
+};
+
+const getNotificationIcon = (tipo: string) => {
+  if (tipo === "like") return "❤️";
+  if (tipo === "comment") return "💬";
+  if (tipo === "rating") return "⭐";
+  if (tipo === "system") return "🔔";
+  return "📌";
+};
 
   return (
     <div className="min-h-screen pb-24 md:pb-8">
@@ -91,7 +136,11 @@ export default function Notifications() {
       </div>
 
       <div className="max-w-4xl mx-auto px-4 py-6">
-        {notifications.length === 0 ? (
+        {loading ? (
+          <div className="animate-pulse text-center py-16 text-muted-foreground">
+            Cargando notificaciones...
+          </div>
+        ) : notifications.length === 0 ? (
           <div className="text-center py-16">
             <div className="text-6xl mb-4">🔔</div>
             <h3 className="mb-2">No tienes notificaciones</h3>
@@ -108,32 +157,33 @@ export default function Notifications() {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.1 }}
                 className={`p-4 rounded-xl border transition-colors ${
-                  notification.read 
+                  notification.leido 
                     ? 'bg-card border-border' 
                     : 'bg-secondary border-primary/20'
                 }`}
               >
                 <div className="flex gap-3">
                   <div className="flex-shrink-0 text-2xl">
-                    {getNotificationIcon(notification.type)}
+                    {getNotificationIcon(notification.tipo)}
                   </div>
                   <div className="flex-1">
-                    {notification.plantId ? (
+                    {notification.publicacion_id ? (
                       <Link 
-                        to={`/plant/${notification.plantId}`}
+                        to={`/plant/${notification.publicacion_id}`}
+                        onClick={() => markAsRead(notification.id)}
                         className="block hover:underline"
                       >
-                        <p className={notification.read ? 'text-muted-foreground' : 'text-foreground'}>
-                          {notification.message}
+                        <p className={notification.leido ? 'text-muted-foreground' : 'text-foreground'}>
+                          {getMessage(notification)}
                         </p>
                       </Link>
                     ) : (
-                      <p className={notification.read ? 'text-muted-foreground' : 'text-foreground'}>
-                        {notification.message}
+                      <p className={notification.leido ? 'text-muted-foreground' : 'text-foreground'}>
+                        {getMessage(notification)}
                       </p>
                     )}
                     <p className="text-xs text-muted-foreground mt-1">
-                      {notification.createdAt.toLocaleDateString('es-ES', {
+                      {new Date(notification.created_at).toLocaleDateString('es-ES', {
                         month: 'short',
                         day: 'numeric',
                         hour: '2-digit',
@@ -142,7 +192,7 @@ export default function Notifications() {
                     </p>
                   </div>
                   <div className="flex gap-2">
-                    {!notification.read && (
+                    {!notification.leido && (
                       <button
                         onClick={() => markAsRead(notification.id)}
                         className="p-2 hover:bg-accent rounded-full transition-colors"

@@ -220,6 +220,16 @@ if (!plant) {
 
     if (!error) {
       setComment('');
+
+      // 🔔 NOTIFICACIÓN DE COMENTARIO
+  if (plant.user_id !== user.id) {
+    await supabase.from("notificaciones").insert({
+      user_id: plant.user_id,
+      actor_id: user.id,
+      tipo: "comment",
+      publicacion_id: plant.id
+    });
+  }
       
       // recargar comentarios
       const { data } = await supabase
@@ -240,6 +250,8 @@ if (!plant) {
       setComentarios(data || []);
     }
   };
+
+  
 
   const eliminarComentario = async (id: string) => {
     const { error } = await supabase

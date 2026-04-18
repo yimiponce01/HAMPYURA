@@ -61,7 +61,37 @@ export default function Home() {
   const [searchType, setSearchType] = useState<'plant' | 'disease'>('plant');
   const { isAuthenticated } = useAuth();
 
-  
+  const [notiCount, setNotiCount] = useState(0);
+
+  const fetchNoti = async () => {
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData.user;
+
+  if (!user) {
+    setNotiCount(0);
+    return;
+  }
+
+  const { count, error } = await supabase
+    .from("notificaciones")
+    .select("*", { count: "exact", head: true })
+    .eq("user_id", user.id)
+    .eq("leido", false);
+
+  if (!error) {
+    setNotiCount(count || 0);
+  }
+};
+
+  useEffect(() => {
+  fetchNoti();
+
+  const update = () => fetchNoti();
+  window.addEventListener("notificationsUpdated", update);
+
+  return () => window.removeEventListener("notificationsUpdated", update);
+}, []);
+
 
 
   const filteredPlants = plants.filter(plant => {
@@ -120,7 +150,9 @@ export default function Home() {
                   className="p-2 hover:bg-secondary rounded-full transition-colors relative"
                 >
                   <Bell className="w-5 h-5" />
-                  <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                  {notiCount > 0 && (
+                    <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+                  )}
                 </Link>
               )}
 
