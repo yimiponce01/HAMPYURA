@@ -1,11 +1,10 @@
 import { Link } from 'react-router-dom';
-import { StarRating } from './StarRating';
-import { Heart, Eye } from 'lucide-react';
+import { Heart, Eye, Star } from "lucide-react";
 import { motion } from 'motion/react';
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { supabase } from '../../lib/supabase';
-import { toast } from "sonner";
+
+
 
 // ✅ TYPE ARRIBA
 type Plant = {
@@ -17,7 +16,9 @@ type Plant = {
   propiedades?: string[];
   enfermedades?: string[];
   preparacion?: string[];
-  likes?: number;
+  likesCount?: number;
+  vistasCount?: number;
+  ratingPromedio?: number;
 };
 
 interface PlantCardProps {
@@ -25,36 +26,9 @@ interface PlantCardProps {
 }
 
 export function PlantCard({ plant }: PlantCardProps) {
-  const [isLiked, setIsLiked] = useState(false);
   const { requireAuth } = useAuth();
 
-  const handleLike = async (e: React.MouseEvent) => {
-  e.preventDefault();
-  e.stopPropagation();
-
-  if (!requireAuth()) {
-    toast.error("Debes iniciar sesión para dar like 🔒", {
-      description: "Inicia sesión para interactuar con las plantas 🌿",
-    });
-    return;
-  }
-
-  const nuevoLike = !isLiked;
-  setIsLiked(nuevoLike);
-
-  const nuevosLikes = nuevoLike
-    ? (plant.likes || 0) + 1
-    : (plant.likes || 0) - 1;
-
-  const { error } = await supabase
-    .from("publicaciones")
-    .update({ likes: nuevosLikes })
-    .eq("id", plant.id);
-
-  if (error) {
-    console.error("Error al dar like:", error);
-  }
-};
+console.log("PROMEDIO:", plant.ratingPromedio);
 
   return (
     <motion.div
@@ -73,15 +47,9 @@ export function PlantCard({ plant }: PlantCardProps) {
               className="w-full h-full object-cover"
             />
 
-            <motion.button
-              onClick={handleLike}
-              className="absolute top-3 right-3 bg-white/90 dark:bg-black/90 p-2 rounded-full backdrop-blur-sm"
-              whileTap={{ scale: 0.9 }}
-            >
-              <Heart 
-                className={`w-5 h-5 ${isLiked ? 'fill-red-500 text-red-500' : 'text-muted-foreground'}`}
-              />
-            </motion.button>
+            <div className="absolute top-3 right-3 bg-white/90 dark:bg-black/90 p-2 rounded-full backdrop-blur-sm">
+              <Heart className="w-5 h-5 text-muted-foreground" />
+            </div>
           </div>
 
           <div className="p-4">
@@ -93,25 +61,36 @@ export function PlantCard({ plant }: PlantCardProps) {
 
             <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
               {plant.descripcion}
-            </p>
+            </p><div className="flex items-center justify-between mt-2 text-sm">
 
-            <div className="flex items-center justify-between">
-              <StarRating 
-                rating={0}
-                totalRatings={0}
-                readonly
-                size="sm"
-              />
+            {/* ⭐ ESTRELLAS */}
+            <div className="flex gap-0.5">
+              {[1,2,3,4,5].map((star) => (
+                <Star
+                  key={star}
+                  className={`w-4 h-4 ${
+                    star <= Math.round(plant.ratingPromedio || 0)
+                      ? "text-yellow-400 fill-yellow-400"
+                      : "text-gray-300"
+                  }`}
+                />
+              ))}
+            </div>
 
-              <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                <Eye className="w-4 h-4" />
-                <span>
-                  {(plant.likes || 0) + (isLiked ? 1 : 0)}
-                </span>
-              </div>
+            {/* ❤️ LIKES */}
+            <div className="flex items-center gap-1">
+              <Heart className="w-4 h-4 text-red-500" />
+              <span>{plant.likesCount || 0}</span>
+            </div>
+
+            {/* 👁️ VISTAS */}
+            <div className="flex items-center gap-1">
+              <Eye className="w-4 h-4 text-gray-400" />
+              <span>{plant.vistasCount || 0}</span>
             </div>
 
           </div>
+            </div>
         </div>
       </Link>
     </motion.div>

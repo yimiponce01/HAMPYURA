@@ -1,5 +1,5 @@
 import { useParams, Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Heart, Share2, Flag, Send } from 'lucide-react';
+import { ArrowLeft, Heart, Share2, Flag, Send, Eye, Star } from 'lucide-react';
 import { StarRating } from '../components/StarRating';
 import { motion } from 'motion/react';
 import { useState } from 'react';
@@ -11,6 +11,7 @@ import { toast } from "sonner";
 
   type Plant = {
   id: string;
+  user_id: string;
   nombre_planta: string;
   nombre_cientifico?: string;
   descripcion: string;
@@ -106,7 +107,6 @@ export default function PlantDetail() {
 
         setLoading(false);
       };
-      
 
       if (id) {
         fetchPlant();
@@ -123,6 +123,7 @@ export default function PlantDetail() {
     }, [id]);
 
 
+
   const navigate = useNavigate();
   const [userRating, setUserRating] = useState(0);
   const [comment, setComment] = useState('');
@@ -135,7 +136,9 @@ export default function PlantDetail() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [editandoId, setEditandoId] = useState<string | null>(null);
   const [textoEditado, setTextoEditado] = useState("");
-
+  const [likesCount, setLikesCount] = useState(0);
+  const [vistas, setVistas] = useState(0);
+  const [averageRating, setAverageRating] = useState(0);
   
   useEffect(() => {
   const fetchPerfil = async () => {
@@ -153,7 +156,7 @@ export default function PlantDetail() {
     }
 
     setMiPerfil(data);
-
+    
     
   };
 
@@ -166,7 +169,19 @@ export default function PlantDetail() {
     }
   }, [id]);
 
-  if (loading) {
+
+    useEffect(() => {
+    if (!plant || !user) return;
+
+    registrarVista();
+    checkIfLiked();
+    fetchLikes();
+    fetchRating();
+    fetchVistas();
+    fetchUserRating();
+  }, [plant, user]);
+
+    if (loading) {
   return (
     <div className="min-h-screen flex items-center justify-center">
       <p className="text-muted-foreground">Cargando...</p>
@@ -182,16 +197,7 @@ if (!plant) {
   );
 }
 
-  const handleRate = (rating: number) => {
-    if (requireAuth()) {
-      setUserRating(rating);
-      alert(`Has valorado esta planta con ${rating} estrellas`);
-    } else {
-      toast.error("Acceso requerido 🔒", {
-        description: "Debes iniciar sesión para dar estrellas⭐",
-      });
-    }
-  };
+
 
   const handleComment = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -244,15 +250,161 @@ if (!plant) {
     if (!error) fetchComentarios();
   };
 
-  const handleLike = () => {
-    if (requireAuth()) {
-      setIsLiked(!isLiked);
+
+    //LIKE
+    const handleLike = async () => {
+      if (!requireAuth()) return;
+      if (!user || !plant) return;
+
+    if (isLiked) {
+      await supabase
+        .from("likes")
+        .delete()
+        .eq("user_id", user.id)
+        .eq("publicacion_id", plant.id);
+
+      setIsLiked(false);
     } else {
-      toast.error("Acceso requerido 🔒", {
-          description: "Debes iniciar sesión para dar like",
-        });
+      await supabase.from("likes").insert({
+        user_id: user.id,
+        publicacion_id: plant.id
+      });
+
+      await supabase.from("notificaciones").insert({
+        user_id: plant.user_id,
+        actor_id: user.id,
+        tipo: "like",
+        publicacion_id: plant.id
+      });
+
+      setIsLiked(true);
     }
+
+    fetchLikes();
+  };
+
+    //SABER SI YA DIO LIKE
+    const checkIfLiked = async () => {
+    if (!user || !plant) return;
+
+    const { data } = await supabase
+      .from("likes")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("publicacion_id", plant.id)
+      .maybeSingle();
+
+    setIsLiked(!!data);
+  };
+
+    //CONTAR LIKES
+    const fetchLikes = async () => {
+    if (!plant) return;
+
+    const { count } = await supabase
+      .from("likes")
+      .select("*", { count: "exact", head: true })
+      .eq("publicacion_id", plant.id);
+
+    setLikesCount(count || 0);
+  };
+
+    //REGISTRAR VISTA
+    const registrarVista = async () => {
+    if (!user || !plant) return;
+
+    await supabase
+      .from("vistas")
+      .upsert({
+        user_id: user.id,
+        publicacion_id: plant.id
+      }, { onConflict: "user_id,publicacion_id" });
+  };
+
+    //CONTAR VISTAS
+    const fetchVistas = async () => {
+    if (!plant) return;
+
+    const { count } = await supabase
+      .from("vistas")
+      .select("*", { count: "exact", head: true })
+      .eq("publicacion_id", plant.id);
+
+    setVistas(count || 0);
+  };
+
+    //RATING
+    const handleRate = async (rating: number) => {
+  if (!user || !plant) return;
+
+  const { error } = await supabase
+    .from("ratings")
+    .upsert(
+      {
+        user_id: user.id,
+        publicacion_id: plant.id,
+        rating
+      },
+      {
+        onConflict: "user_id,publicacion_id" // 🔥 CLAVE
+      }
+    );
+
+  if (error) {
+    console.error("Error al guardar rating:", error);
+    return;
   }
+
+  // 🔥 actualiza UI inmediato
+  setUserRating(rating);
+
+  // 🔔 notificación (opcional)
+  await supabase.from("notificaciones").insert({
+    user_id: plant.user_id,
+    actor_id: user.id,
+    tipo: "rating",
+    publicacion_id: plant.id
+  });
+
+  // 🔄 recalcular promedio
+  fetchRating();
+};
+
+  const fetchUserRating = async () => {
+  if (!user || !plant) return;
+
+  const { data } = await supabase
+    .from("ratings")
+    .select("rating")
+    .eq("user_id", user.id)
+    .eq("publicacion_id", plant.id)
+    .maybeSingle();
+
+  if (data) {
+    setUserRating(data.rating);
+  }
+};
+
+  //PROMEDIO
+
+    const fetchRating = async () => {
+    if (!plant) return;
+
+    const { data } = await supabase
+      .from("ratings")
+      .select("rating")
+      .eq("publicacion_id", plant.id);
+
+    if (!data || data.length === 0) {
+      setAverageRating(0);
+      return;
+    }
+
+    const suma = data.reduce((acc, r) => acc + r.rating, 0);
+    const promedio = suma / data.length;
+
+    setAverageRating(promedio);
+  };
 
 
 
@@ -368,16 +520,41 @@ if (!plant) {
             <p className="text-muted-foreground italic">{plant.nombre_cientifico || "Sin nombre científico"}</p>
           </div>
 
-          <div className="flex items-center gap-4 mb-6">
-            <StarRating 
-              rating={userRating || 0}
-              totalRatings={0}
-              onRate={handleRate}
+          <div className="flex gap-6 items-center mt-4">
+
+          {/* ❤️ LIKE *
+          <button onClick={handleLike} className="flex items-center gap-1">
+            <Heart
+              className={`w-5 h-5 ${
+                isLiked ? "text-red-500 fill-red-500" : "text-gray-400"
+              }`}
             />
-            <span className="text-muted-foreground">
-              {plant.likes || 0} me gusta
-            </span>
+            <span>{likesCount}</span>
+          </button>/}
+
+          {/* 👁️ VISTAS 
+          <div className="flex items-center gap-1">
+            <Eye className="w-5 h-5 text-gray-400" />
+            <span>{vistas}</span>
+          </div>*/}
+
+          {/* ⭐ ESTRELLAS */}
+          <div className="flex gap-1">
+            {[1, 2, 3, 4, 5].map((star) => (
+              <Star
+                key={star}
+                onClick={() => handleRate(star)}
+                className={`w-5 h-5 cursor-pointer ${
+                  star <= userRating 
+                  ? "text-yellow-400 fill-yellow-400 scale-110"
+                    : "text-gray-300"
+                }`}
+              />
+            ))}
           </div>
+        </div>
+
+<br></br>
 
           {/* Description */}
           <div className="mb-6">
@@ -442,7 +619,7 @@ if (!plant) {
           {/* Author */}
           <div className="mb-6 p-4 bg-secondary rounded-xl">
             <p className="text-sm text-muted-foreground">
-              Publicado por{" "}
+              🌿 Publicado por{" "}
               <span className="font-semibold text-foreground">
                 {plant.perfiles?.nombre || "Usuario"}
               </span>{" "}
@@ -465,26 +642,6 @@ if (!plant) {
                     const esPropio = user?.id === comentario.user_id;
 const esAdmin = miPerfil?.rol === "admin";
 
-{(esPropio || esAdmin) && (
-  <div className="flex gap-2 mt-2">
-    <button
-      onClick={() => {
-      setEditandoId(comentario.id);
-      setTextoEditado(comentario.contenido);
-    }}
-      className="text-xs text-green-600 hover:underline"
-    >
-      Editar
-    </button>
-
-    <button
-      onClick={() => eliminarComentario(comentario.id)}
-      className="text-xs text-red-600 hover:underline"
-    >
-      Eliminar
-    </button>
-  </div>
-)}
 
                     return (
                       <div key={comentario.id} className="flex gap-3 mb-4">

@@ -17,26 +17,73 @@ export default function Profile() {
   const [plantToEdit, setPlantToEdit] = useState<any>(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [plantToDelete, setPlantToDelete] = useState<string | null>(null);
-  
-  useEffect(() => {
-    if (!user) return; // 🔥 evita error
+  const totalRatings = userPlants.reduce((acc, p) => acc + (p.ratingPromedio || 0), 0);
+  const promedioGeneral = userPlants.length > 0 ? totalRatings / userPlants.length : 0;
+  const [perfil, setPerfil] = useState<any>(null);
 
+  useEffect(() => {
+    if (!user) return;
+
+    // 🔥 1. TRAER PERFIL
+    const fetchPerfil = async () => {
+      const { data, error } = await supabase
+        .from("perfiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+
+      if (!error) {
+        setPerfil(data);
+      } else {
+        console.error("Error perfil:", error);
+      }
+    };
+
+    // 🔥 2. TRAER PLANTAS
     const fetchUserPlants = async () => {
       const { data, error } = await supabase
         .from("publicaciones")
-        .select("*")
+        .select(`
+          *,
+          likes(count),
+          vistas(count),
+          ratings(rating)
+        `)
         .eq("user_id", user.id)
         .eq("estado", "aprobado")
         .order("created_at", { ascending: false });
 
       if (!error) {
-        setUserPlants(data || []);
+        const plantsWithStats = (data || []).map((plant: any) => {
+          const likes = plant.likes?.[0]?.count || 0;
+          const vistas = plant.vistas?.[0]?.count || 0;
+
+          const ratingsArray = Array.isArray(plant.ratings) ? plant.ratings : [];
+          const promedio =
+            ratingsArray.length > 0
+              ? ratingsArray.reduce((acc: number, r: any) => acc + r.rating, 0) /
+                ratingsArray.length
+              : 0;
+
+
+          return {
+            ...plant,
+            likesCount: likes,
+            vistasCount: vistas,
+            ratingPromedio: promedio,
+          };
+        });
+
+        setUserPlants(plantsWithStats);
       } else {
         console.error(error);
       }
     };
 
+    // 🔥 EJECUTAR TODO
+    fetchPerfil();
     fetchUserPlants();
+
   }, [user]);
 
   const navigate = useNavigate();
@@ -122,6 +169,7 @@ const confirmarEliminacion = async () => {
   }
 };
 
+
   return (
     <div className="min-h-screen pb-24 md:pb-8">
 
@@ -169,8 +217,12 @@ const confirmarEliminacion = async () => {
 
           <div className="flex items-center gap-4">
             <div className="w-20 h-20 bg-white/20 rounded-full overflow-hidden flex-shrink-0">
-              {user.avatar ? (
-                <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+              {perfil?.foto_url ? (
+                <img
+                  src={perfil.foto_url}
+                  alt={perfil?.nombre || user.name}
+                  className="w-full h-full object-cover"
+                />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-3xl">
                   {user.name.charAt(0)}
@@ -178,7 +230,7 @@ const confirmarEliminacion = async () => {
               )}
             </div>
             <div>
-              <h2 className="mb-1">{user.name}</h2>
+              <h2 className="mb-1">{perfil?.nombre || user.name}</h2>
               <p className="text-primary-foreground/80">{user.email}</p>
               {user.role === 'admin' && (
                 <span className="inline-block mt-2 px-3 py-1 bg-white/20 rounded-full text-sm">
@@ -189,7 +241,7 @@ const confirmarEliminacion = async () => {
           </div>
 
           {user.bio && (
-            <p className="mt-4 text-primary-foreground/90">{user.bio}</p>
+            <p className="mt-4 text-primary-foreground/90">{perfil?.bio}</p>
           )}
         </div>
       </div>
@@ -197,22 +249,31 @@ const confirmarEliminacion = async () => {
       {/* Stats */}
       <div className="max-w-4xl mx-auto px-4 -mt-6">
         <div className="grid grid-cols-3 gap-4 bg-card rounded-2xl shadow-lg border border-border p-4">
+
+          {/* 📦 PUBLICACIONES */}
           <div className="text-center">
-            <div className="text-2xl mb-1">{(userPlants || []).length}</div>
+            <div className="text-2xl mb-1">{userPlants.length}</div>
             <div className="text-sm text-muted-foreground">Publicaciones</div>
           </div>
+
+          {/* ❤️ LIKES + 👁️ VISTAS */}
           <div className="text-center">
             <div className="text-2xl mb-1">
-              {(userPlants || []).reduce((acc, p) => acc + 0, 0)}
+              {userPlants.reduce((acc, p) => acc + (p.likesCount || 0), 0)}
             </div>
             <div className="text-sm text-muted-foreground">Me gusta</div>
+
+            
           </div>
+
+          {/* ⭐ PROMEDIO */}
           <div className="text-center">
             <div className="text-2xl mb-1">
-              {(userPlants || []).reduce((acc, p) => acc + (p.comments || []).length, 0)}
+              {promedioGeneral.toFixed(1)}
             </div>
-            <div className="text-sm text-muted-foreground">Comentarios</div>
+            <div className="text-sm text-muted-foreground">Rating</div>
           </div>
+
         </div>
       </div>
 
@@ -288,13 +349,11 @@ const confirmarEliminacion = async () => {
 
                   {/* IZQUIERDA */}
                   <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                    <span>❤️ {plant.likes || 0}</span>
-                    <span>⭐ 5.0</span>
-                    <span>💬 0</span>
+                    <span>❤️ {plant.likesCount || 0}</span>
+                    <span>👁️ {plant.vistasCount || 0}</span>
+                    <span>⭐ {plant.ratingPromedio?.toFixed(1) || "0.0"}</span>
                   </div>
-
                   
-
                   {/* DERECHA (3 puntitos) */}
                   <div className="relative">
                     <button

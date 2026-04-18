@@ -19,11 +19,35 @@ export default function Home() {
 
       const { data } = await supabase
         .from("publicaciones")
-        .select("*")
+        .select(`
+          *,
+          likes(count),
+          vistas(count),
+          ratings(rating)
+        `)
         .eq("estado", "aprobado")
         .order("created_at", { ascending: false });
 
-      setPlants(data || []);
+      const plantsWithStats = (data || []).map((plant: any) => {
+  const likes = plant.likes?.[0]?.count || 0;
+  const vistas = plant.vistas?.[0]?.count || 0;
+      const ratingsArray = Array.isArray(plant.ratings) ? plant.ratings : [];
+      const promedio =
+        ratingsArray.length > 0
+          ? ratingsArray.reduce((acc: number, r: any) => acc + r.rating, 0) /
+            ratingsArray.length
+          : 0;
+
+
+      return {
+        ...plant,
+        likesCount: likes,
+        vistasCount: vistas,
+        ratingPromedio: promedio,
+      };
+    });
+
+    setPlants(plantsWithStats);
       setLoading(false);
     };
 
@@ -37,6 +61,7 @@ export default function Home() {
   const [searchType, setSearchType] = useState<'plant' | 'disease'>('plant');
   const { isAuthenticated } = useAuth();
 
+  
 
 
   const filteredPlants = plants.filter(plant => {
@@ -192,7 +217,9 @@ export default function Home() {
                     enfermedades: plant.enfermedades || [],
                     propiedades: plant.propiedades || [],
                     preparacion: plant.preparacion || [],
-                    likes: plant.likes || 0,
+                    likesCount: plant.likesCount,
+                    vistasCount: plant.vistasCount,
+                    ratingPromedio: plant.ratingPromedio,
                   }}
                 />
               </motion.div>
