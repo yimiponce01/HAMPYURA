@@ -171,7 +171,7 @@ export default function PlantDetail() {
 
 
     useEffect(() => {
-    if (!plant || !user) return;
+    if (!plant?.id || !user?.id) return;
 
     registrarVista();
     checkIfLiked();
@@ -179,7 +179,7 @@ export default function PlantDetail() {
     fetchRating();
     fetchVistas();
     fetchUserRating();
-  }, [plant, user]);
+  }, [plant?.id, user?.id]);
 
     if (loading) {
   return (
@@ -254,38 +254,52 @@ if (!plant) {
     //LIKE
     const handleLike = async () => {
       if (!requireAuth()) return;
-      if (!user || !plant) return;
+      if (!user?.id || !plant?.id) return;
 
-    if (isLiked) {
-      await supabase
-        .from("likes")
-        .delete()
-        .eq("user_id", user.id)
-        .eq("publicacion_id", plant.id);
+      // 🔥 1. CAMBIO INMEDIATO EN UI
+      const nuevoEstado = !isLiked;
+      setIsLiked(nuevoEstado);
 
-      setIsLiked(false);
-    } else {
-      await supabase.from("likes").insert({
-        user_id: user.id,
-        publicacion_id: plant.id
-      });
+      // opcional: también actualizar contador sin esperar
+      setLikesCount(prev => nuevoEstado ? prev + 1 : prev - 1);
 
-      await supabase.from("notificaciones").insert({
-        user_id: plant.user_id,
-        actor_id: user.id,
-        tipo: "like",
-        publicacion_id: plant.id
-      });
+      try {
+        if (nuevoEstado) {
+          await supabase.from("likes").insert({
+            user_id: user.id,
+            publicacion_id: plant.id
+          });
 
-      setIsLiked(true);
-    }
+          await supabase.from("notificaciones").insert({
+            user_id: plant.user_id,
+            actor_id: user.id,
+            tipo: "like",
+            publicacion_id: plant.id
+          });
 
-    fetchLikes();
-  };
+        } else {
+          await supabase
+            .from("likes")
+            .delete()
+            .eq("user_id", user.id)
+            .eq("publicacion_id", plant.id);
+        }
+
+        // 🔥 sincroniza con Home
+        window.dispatchEvent(new Event("likeUpdated"));
+
+      } catch (error) {
+        console.error("Error like:", error);
+
+        // ❌ rollback si falla
+        setIsLiked(!nuevoEstado);
+        setLikesCount(prev => nuevoEstado ? prev - 1 : prev + 1);
+      }
+    };
 
     //SABER SI YA DIO LIKE
     const checkIfLiked = async () => {
-    if (!user || !plant) return;
+    if (!user?.id || !plant?.id) return;
 
     const { data } = await supabase
       .from("likes")
@@ -295,6 +309,7 @@ if (!plant) {
       .maybeSingle();
 
     setIsLiked(!!data);
+    console.log("LIKED:", !!data);
   };
 
     //CONTAR LIKES
@@ -442,12 +457,21 @@ if (!plant) {
           </button>
           <div className="flex gap-2">
             <motion.button
-              onClick={handleLike}
-              className="p-2 hover:bg-secondary rounded-full transition-colors"
-              whileTap={{ scale: 0.9 }}
-            >
-              <Heart className={`w-5 h-5 ${isLiked ? 'fill-red-500 text-red-500' : ''}`} />
-            </motion.button>
+                onClick={() => {
+                  if (!requireAuth()) {
+                    toast.error("Acceso requerido 🔒", {
+                      description: "Debes iniciar sesión para dar like ❤️",
+                    });
+                    return;
+                  }
+
+                  handleLike();
+                }}
+                className="p-2 hover:bg-secondary rounded-full transition-colors"
+                whileTap={{ scale: 0.9 }}
+              >
+                <Heart className={`w-5 h-5 ${isLiked ? 'fill-red-500 text-red-500' : ''}`} />
+              </motion.button>
             <button className="p-2 hover:bg-secondary rounded-full transition-colors">
               <Share2 className="w-5 h-5" />
             </button>

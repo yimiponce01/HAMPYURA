@@ -3,7 +3,8 @@ import { Heart, Eye, Star } from "lucide-react";
 import { motion } from 'motion/react';
 import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-
+import { useEffect } from "react";
+import { supabase } from "../../lib/supabase";
 
 
 // ✅ TYPE ARRIBA
@@ -30,6 +31,35 @@ export function PlantCard({ plant }: PlantCardProps) {
 
 console.log("PROMEDIO:", plant.ratingPromedio);
 
+const [isLiked, setIsLiked] = useState(false);
+
+    const checkIfLiked = async () => {
+    const { data: userData } = await supabase.auth.getUser();
+    const user = userData.user;
+
+    if (!user) return;
+
+    const { data } = await supabase
+      .from("likes")
+      .select("*")
+      .eq("user_id", user.id)
+      .eq("publicacion_id", plant.id)
+      .maybeSingle();
+
+    setIsLiked(!!data);
+  };
+  useEffect(() => {
+    checkIfLiked();
+
+    const update = () => {
+      checkIfLiked();
+    };
+
+    window.addEventListener("likeUpdated", update);
+
+    return () => window.removeEventListener("likeUpdated", update);
+  }, []);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -48,7 +78,11 @@ console.log("PROMEDIO:", plant.ratingPromedio);
             />
 
             <div className="absolute top-3 right-3 bg-white/90 dark:bg-black/90 p-2 rounded-full backdrop-blur-sm">
-              <Heart className="w-5 h-5 text-muted-foreground" />
+              <Heart
+                className={`w-5 h-5 ${
+                  isLiked ? "fill-red-500 text-red-500" : "text-muted-foreground"
+                }`}
+              />
             </div>
           </div>
 
