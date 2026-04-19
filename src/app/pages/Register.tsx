@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Leaf } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { motion } from 'motion/react';
+import { Eye, EyeOff } from "lucide-react";
 
 export default function Register() {
   const [name, setName] = useState('');
@@ -13,6 +14,8 @@ export default function Register() {
   const [error, setError] = useState('');
   const { register } = useAuth();
   const navigate = useNavigate();
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,7 +44,7 @@ export default function Register() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-      <motion.div 
+      <motion.div
         className="w-full max-w-md"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -49,13 +52,13 @@ export default function Register() {
         <div className="bg-card rounded-3xl shadow-lg border border-border overflow-hidden">
           {/* Header */}
           <div className="relative bg-primary text-primary-foreground p-6">
-            <Link 
+            <Link
               to="/login"
               className="absolute top-4 left-4 hover:bg-white/20 p-2 rounded-full transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
             </Link>
-            
+
             <div className="flex items-center gap-3 mb-2 justify-center">
               <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
                 <Leaf className="w-6 h-6" />
@@ -74,7 +77,7 @@ export default function Register() {
             </p>
 
             {error && (
-              <motion.div 
+              <motion.div
                 className="mb-4 p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-sm"
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -118,30 +121,52 @@ export default function Register() {
                 <label htmlFor="password" className="block mb-2">
                   Contraseña
                 </label>
-                <input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="w-full px-4 py-3 bg-input-background rounded-xl border border-border focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="••••••••"
-                />
+
+                <div className="relative">
+                  <input
+                    id="password"
+                    type={showPassword ? "text" : "password"}
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="w-full px-4 py-3 pr-10 bg-input-background rounded-xl border border-border focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="••••••••"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
+                  >
+                    {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
               </div>
 
               <div>
                 <label htmlFor="confirmPassword" className="block mb-2">
                   Confirmar Contraseña
                 </label>
-                <input
-                  id="confirmPassword"
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  required
-                  className="w-full px-4 py-3 bg-input-background rounded-xl border border-border focus:outline-none focus:ring-2 focus:ring-primary"
-                  placeholder="••••••••"
-                />
+
+                <div className="relative">
+                  <input
+                    id="confirmPassword"
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    required
+                    className="w-full px-4 py-3 pr-10 bg-input-background rounded-xl border border-border focus:outline-none focus:ring-2 focus:ring-primary"
+                    placeholder="••••••••"
+                  />
+
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500"
+                  >
+                    {showConfirmPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  </button>
+                </div>
               </div>
 
               <motion.button
