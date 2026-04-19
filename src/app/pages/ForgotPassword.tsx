@@ -11,19 +11,31 @@ export default function ForgotPassword() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    
+
     // Simulación de envío
     await new Promise(resolve => setTimeout(resolve, 1000));
-    
+
     setIsLoading(false);
     setIsSubmitted(true);
   };
 
   if (isSubmitted) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-        <motion.div 
-          className="w-full max-w-md"
+      <div className="relative min-h-screen flex items-center justify-center p-4">
+
+        {/* FONDO */}
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{
+            backgroundImage: "url('https://ezrviryjunnzpdfsuxbz.supabase.co/storage/v1/object/public/images/bg-auth.jpg')"
+          }}
+        ></div>
+
+        {/* OSCURECER */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/30 to-black/60 backdrop-blur-[2px]"></div>
+
+        <motion.div
+          className="relative z-10 w-full max-w-md"
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
         >
@@ -43,7 +55,7 @@ export default function ForgotPassword() {
             <p className="text-sm text-muted-foreground mb-6">
               Revisa tu bandeja de entrada y sigue las instrucciones.
             </p>
-            <Link 
+            <Link
               to="/login"
               className="inline-block w-full bg-primary text-primary-foreground py-3 rounded-xl hover:opacity-90 transition-opacity"
             >
@@ -56,22 +68,34 @@ export default function ForgotPassword() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4 bg-background">
-      <motion.div 
-        className="w-full max-w-md"
+    <div className="relative min-h-screen flex items-center justify-center p-4">
+
+      {/* FONDO */}
+      <div
+        className="absolute inset-0 bg-cover bg-center"
+        style={{
+          backgroundImage: "url('https://ezrviryjunnzpdfsuxbz.supabase.co/storage/v1/object/public/images/bg-auth.jpg')"
+        }}
+      ></div>
+
+      {/*  OSCURECER */}
+      <div className="absolute inset-0 bg-gradient-to-b from-black/30 to-black/60 backdrop-blur-[2px]"></div>
+
+      <motion.div
+        className="relative z-10 w-full max-w-md"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
       >
         <div className="bg-card rounded-3xl shadow-lg border border-border overflow-hidden">
           {/* Header */}
           <div className="relative bg-primary text-primary-foreground p-6">
-            <Link 
+            <Link
               to="/login"
               className="absolute top-4 left-4 hover:bg-white/20 p-2 rounded-full transition-colors"
             >
               <ArrowLeft className="w-5 h-5" />
             </Link>
-            
+
             <div className="flex items-center gap-3 mb-2 justify-center">
               <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center">
                 <Leaf className="w-6 h-6" />
