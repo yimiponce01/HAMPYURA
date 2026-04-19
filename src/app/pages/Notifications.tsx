@@ -14,6 +14,8 @@ interface Notification {
   read: boolean;
 }
 
+
+
 export default function Notifications() {
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState<any[]>([]);
@@ -34,7 +36,7 @@ useEffect(() => {
       .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
-      console.log(error);
+      console.log(error)
 
     if (!error) {
       setNotifications(data || []);
@@ -85,12 +87,13 @@ window.dispatchEvent(new Event("notificationsUpdated"));
 
   const unreadCount = notifications.filter(n => !n.leido).length;
 
+
 const getMessage = (n: any) => {
   if (n.tipo === "like") return "Alguien dio like a tu publicación";
   if (n.tipo === "comment") return "Comentaron tu publicación";
   if (n.tipo === "rating") return "Calificaron tu planta";
   if (n.tipo === "system") return "Bienvenido a HAMPIYURA. Completa tu perfil";
-  return "📌 Nueva notificación";
+  return null;
 };
 
 const getNotificationIcon = (tipo: string) => {
@@ -98,8 +101,23 @@ const getNotificationIcon = (tipo: string) => {
   if (tipo === "comment") return "💬";
   if (tipo === "rating") return "⭐";
   if (tipo === "system") return "🔔";
-  return "📌";
+  return null;
 };
+
+
+const tiposValidos = [
+  "like",
+  "comment",
+  "rating",
+  "reporte",
+  "publicacion",
+  "registro",
+  "system"
+];
+
+const notificacionesFiltradas = notifications.filter(n =>
+  tiposValidos.includes(n.tipo) && getMessage(n)
+);
 
   return (
     <div className="min-h-screen pb-24 md:pb-8">
@@ -139,7 +157,7 @@ const getNotificationIcon = (tipo: string) => {
           </div>
         ) : (
           <div className="space-y-3">
-            {notifications.map((notification, index) => (
+            {notificacionesFiltradas.map((notification, index) => (
               <motion.div
                 key={notification.id}
                 initial={{ opacity: 0, x: -20 }}

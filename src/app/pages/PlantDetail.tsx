@@ -403,8 +403,21 @@ const eliminarPublicacion = async (id: string) => {
   };
 
     //RATING
-    const handleRate = async (rating: number) => {
-  if (!user || !plant) return;
+const handleRate = async (rating: number) => {
+
+  // 🔥 VALIDACIÓN (AQUÍ VA)
+  if (!user) {
+    toast.warning("Debes iniciar sesión ⭐", {
+      description: "Inicia sesión para calificar esta planta"
+    });
+
+    // opcional (pro)
+    // navigate("/login");
+
+    return;
+  }
+
+  if (!plant) return;
 
   const { error } = await supabase
     .from("ratings")
@@ -415,19 +428,20 @@ const eliminarPublicacion = async (id: string) => {
         rating
       },
       {
-        onConflict: "user_id,publicacion_id" // 🔥 CLAVE
+        onConflict: "user_id,publicacion_id"
       }
     );
 
   if (error) {
     console.error("Error al guardar rating:", error);
+    toast.error("Error al guardar calificación ❌");
     return;
   }
 
-  // 🔥 actualiza UI inmediato
+  // 🔥 UI inmediata
   setUserRating(rating);
 
-  // 🔔 notificación (opcional)
+  // 🔔 notificación
   await supabase.from("notificaciones").insert({
     user_id: plant.user_id,
     actor_id: user.id,
@@ -437,6 +451,9 @@ const eliminarPublicacion = async (id: string) => {
 
   // 🔄 recalcular promedio
   fetchRating();
+
+  // ✅ feedback bonito
+  toast.success("Calificación enviada ⭐");
 };
 
   const fetchUserRating = async () => {
@@ -494,25 +511,45 @@ const eliminarPublicacion = async (id: string) => {
     }
   };
 
-    const handleReportar = async () => {
-    if (!user || !plant) return;
+const handleReportar = async (motivo: string) => {
+  if (!user || !plant) return;
 
-    const motivo = "Contenido inapropiado"; // ejemplo
+  const { error } = await supabase.from("reportes").insert({
+    publicacion_id: plant.id,
+    usuario_id: user.id,
+    motivo,
+    estado: "pendiente"
+  });
 
-    const { error } = await supabase.from("reportes").insert({
-      publicacion_id: plant.id,
-      usuario_id: user.id,
-      motivo: motivo
+  if (error) {
+    console.error(error);
+    return;
+  }
+
+  // 🔥 dueño de la planta
+  const { data: plantaOwner } = await supabase
+    .from("publicaciones")
+    .select("user_id")
+    .eq("id", plant.id)
+    .single();
+
+  if (plantaOwner) {
+    await supabase.from("notificaciones").insert({
+      actor_id: user.id,
+      user_id: plantaOwner.user_id,
+      tipo: "reporte",
+      publicacion_id: plant.id
     });
+  }
 
-    if (!error) {
-      await supabase.from("notificaciones").insert({
-        actor_id: user.id,
-        tipo: "reporte",
-        publicacion_id: plant.id
-      });
-    }
-  };
+  // 🔥 MENSAJE
+  toast.success("Reporte enviado correctamente ✅", {
+  description: "Gracias por ayudarnos a mantener la comunidad segura 🌿"
+});
+
+  // 🔥 cerrar modal
+  setShowReportModal(false);
+};
 
   const esAdmin = miPerfil?.rol === "admin";
 
@@ -545,14 +582,19 @@ const eliminarPublicacion = async (id: string) => {
             <Heart className={`w-5 h-5 ${isLiked ? 'fill-red-500 text-red-500' : ''}`} />
           </motion.button>
 
-          {/* 🔗 SHARE */}
-          <button className="p-2 hover:bg-secondary rounded-full">
-            <Share2 className="w-5 h-5" />
-          </button>
+
 
           {/* 🚩 REPORT */}
           <button 
-            onClick={() => setShowReportModal(true)}
+            onClick={() => {
+              if (!user) {
+                toast.error("Debes iniciar sesión para reportar 🚫");
+                navigate("/login");
+                return;
+              }
+
+              setShowReportModal(true);
+            }}
             className="p-2 hover:bg-secondary rounded-full transition-colors"
           >
               <Flag className="w-5 h-5" />
@@ -899,14 +941,26 @@ const esAdmin = miPerfil?.rol === "admin";
           </p>
 
           <div className="space-y-2 mb-6">
-            {['Información incorrecta', 'Contenido inapropiado', 'Spam', 'Otro'].map((reason) => (
-              <button
-                key={reason}
-                className="w-full py-2 text-left hover:bg-accent rounded-md px-2"
-              >
-                {reason}
-              </button>
-            ))}
+            <div className="flex flex-col mt-4">
+
+              {[
+                "Información incorrecta",
+                "Contenido inapropiado",
+                "Spam",
+                "Otro"
+              ].map((motivo, index, array) => (
+                <button
+                  key={motivo}
+                  onClick={() => handleReportar(motivo)}
+                  className={`text-left py-3 px-2 transition hover:text-primary 
+                    ${index !== array.length - 1 ? "border-b border-border" : ""}
+                  `}
+                >
+                  {motivo}
+                </button>
+              ))}
+
+            </div>
           </div>
           
 

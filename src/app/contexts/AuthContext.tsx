@@ -92,7 +92,7 @@ if (data.user) {
 };
 
 const register = async (name: string, email: string, password: string) => {
-  const { data, error } = await supabase.auth.signUp({
+  const { error } = await supabase.auth.signUp({
     email,
     password,
   });
@@ -102,45 +102,55 @@ const register = async (name: string, email: string, password: string) => {
     return;
   }
 
-  if (!data.user) return;
+  // 🔥 LOGIN AUTOMÁTICO
+  const { data: loginData, error: loginError } = await supabase.auth.signInWithPassword({
+    email,
+    password,
+  });
 
-  // guardar perfil
+  if (loginError || !loginData.user) {
+    console.error(loginError?.message);
+    return;
+  }
+
+  const userId = loginData.user.id;
+
+  // 🔥 CREAR PERFIL
   await supabase.from('perfiles').insert({
-    id: data.user.id,
+    id: userId,
     nombre: name,
     email: email,
     rol: 'user',
   });
 
-  // 🔥 LOGIN AUTOMÁTICO
-  const { error: loginError } = await supabase.auth.signInWithPassword({
-    email,
-    password,
-  });
+  // 🔥 NOTIFICACIÓN (AQUÍ VA)
+  const { error: notifError } = await supabase
+    .from("notificaciones")
+    .insert({
+      actor_id: userId,
+      tipo: "registro"
+    });
 
-  if (loginError) {
-    console.error(loginError.message);
-    return;
-  }
+  console.log("NOTIF ERROR:", notifError);
 
-  // 🔥 REDIRECCIÓN
+  // 🔥 RECIÉN AQUÍ REDIRIGES
   window.location.href = "/";
 };
 
 const logout = async () => {
-await supabase.auth.signOut();
-setUser(null);
-setIsVisitor(false);
+  await supabase.auth.signOut();
+  setUser(null);
+  setIsVisitor(false);
 };
 
 const continueAsVisitor = () => {
-setIsVisitor(true);
+  setIsVisitor(true);
 };
 
 const updateProfile = (data: Partial<User>) => {
-if (user) {
-setUser({ ...user, ...data });
-}
+  if (user) {
+  setUser({ ...user, ...data });
+  }
 };
 
 const requireAuth = () => {
@@ -149,27 +159,27 @@ return !!(user && user.role !== 'visitor');
 
 return (
 <AuthContext.Provider
-value={{
-user,
-isAuthenticated: !!user,
-isVisitor,
-login,
-register,
-logout,
-continueAsVisitor,
-updateProfile,
-requireAuth,
-}}
->
-{children}
-</AuthContext.Provider>
-);
+  value={{
+  user,
+  isAuthenticated: !!user,
+  isVisitor,
+  login,
+  register,
+  logout,
+  continueAsVisitor,
+  updateProfile,
+  requireAuth,
+  }}
+  >
+  {children}
+  </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {
-const context = useContext(AuthContext);
-if (!context) {
-throw new Error('useAuth debe ser usado dentro de AuthProvider');
-}
-return context;
+  const context = useContext(AuthContext);
+  if (!context) {
+  throw new Error('useAuth debe ser usado dentro de AuthProvider');
+  }
+  return context;
 }

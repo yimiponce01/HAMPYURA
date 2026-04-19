@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import { Link } from 'react-router-dom';
 import { useNavigate } from 'react-router-dom';
+import { toast } from "sonner";
 
 interface Post {
     id: string;
@@ -39,7 +40,7 @@ interface Post {
 
     if (error) {
         console.error(error);
-        alert("No tienes permisos para aprobar");
+        toast.error("No tienes permisos para aprobar ❌");
         return;
     }
 
@@ -56,7 +57,7 @@ interface Post {
 
     if (error) {
         console.error(error);
-        alert("No tienes permisos para eliminar");
+        toast.error("No tienes permisos para eliminar ❌");
         return;
     }
 

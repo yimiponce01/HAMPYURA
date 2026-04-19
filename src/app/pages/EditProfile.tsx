@@ -73,7 +73,7 @@ export default function EditProfile() {
 
   if (uploadError) {
     console.error(uploadError);
-    alert("Error al subir imagen");
+    toast.error("Error al subir imagen ❌");
     return;
   }
 
@@ -236,7 +236,7 @@ useEffect(() => {
             </p>
             <button
               type="button"
-              onClick={() => alert('Funcionalidad de cambio de contraseña')}
+              onClick={() => toast.info("Funcionalidad de cambio de contraseña")}
               className="text-primary hover:underline"
             >
               Cambiar Contraseña

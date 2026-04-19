@@ -80,13 +80,13 @@ export default function PublishPlant() {
 
     // 🚨 VALIDACIÓN
     if (imageUrls.length === 0) {
-      alert("No se subió ninguna imagen");
+      toast.error("No se subió ninguna imagen ❌");
       setLoading(false);
       return;
     }
 
       if (!user) {
-    alert("Debes iniciar sesión");
+    toast.error("Debes iniciar sesión ❌");
     setLoading(false);
     return;
   }
