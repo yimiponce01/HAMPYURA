@@ -142,9 +142,6 @@ export default function Login() {
           </div>
         </div>
 
-        <p className="text-center text-sm text-muted-foreground mt-4">
-          Usa cualquier correo para probar (ej: admin@test.com para admin)
-        </p>
       </motion.div>
     </div>
   );
