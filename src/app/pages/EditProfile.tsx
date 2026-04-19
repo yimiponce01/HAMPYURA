@@ -5,6 +5,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { motion } from 'motion/react';
 import { supabase } from '../../lib/supabase';
 import { toast } from "sonner";
+import { useEffect } from "react";
 
 export default function EditProfile() {
   const { user, updateProfile } = useAuth();
@@ -91,6 +92,34 @@ export default function EditProfile() {
     avatar: publicUrl
   }));
 };
+
+useEffect(() => {
+  if (!user) return;
+
+  const fetchPerfil = async () => {
+    const { data, error } = await supabase
+      .from("perfiles")
+      .select("*")
+      .eq("id", user.id)
+      .single();
+
+    if (!error && data) {
+      setMiPerfil(data);
+
+      // 🔥 IMPORTANTE: llenar el formulario con datos reales
+      setFormData(prev => ({
+        ...prev,
+        name: data.nombre || prev.name,
+        bio: data.bio || "",
+        region: data.region || "",
+        avatar: data.foto_url || ""   // 👈 ESTA ES LA CLAVE
+      }));
+    }
+  };
+
+  fetchPerfil();
+}, [user]);
+
 
   return (
     <div className="min-h-screen pb-24 md:pb-8">

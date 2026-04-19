@@ -9,6 +9,7 @@ import { supabase } from "../../lib/supabase";
 import { toast } from "sonner"; 
 
 
+
   type Plant = {
   id: string;
   user_id: string;
@@ -98,6 +99,7 @@ export default function PlantDetail() {
           console.log("PLANT DATA:", data);
           console.log("PLANT ERROR:", error);
           console.log(data);
+          console.log("DELETE ERROR:", error);
 
           if (!error && data) {
             setPlant(data);
@@ -113,12 +115,6 @@ export default function PlantDetail() {
         fetchComentarios();
       }
 
-      const getUser = async () => {
-      const { data } = await supabase.auth.getUser();
-        setUser(data.user);
-      };
-
-    getUser();
 
     }, [id]);
 
@@ -128,8 +124,8 @@ export default function PlantDetail() {
   const [userRating, setUserRating] = useState(0);
   const [comment, setComment] = useState('');
   const [comentarios, setComentarios] = useState<any[]>([]);
-  const [user, setUser] = useState<any>(null);
   const [isLiked, setIsLiked] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showReportModal, setShowReportModal] = useState(false);
   const { requireAuth } = useAuth();
   const [plant, setPlant] = useState<Plant | null>(null);
@@ -139,6 +135,8 @@ export default function PlantDetail() {
   const [likesCount, setLikesCount] = useState(0);
   const [vistas, setVistas] = useState(0);
   const [averageRating, setAverageRating] = useState(0);
+
+  const { user } = useAuth();
   
   useEffect(() => {
   const fetchPerfil = async () => {
@@ -251,7 +249,51 @@ if (!plant) {
     }
   };
 
-  
+const eliminarPublicacion = async (id: string) => {
+  if (!id) return;
+
+  console.log("Intentando eliminar:", id);
+
+  // 🔥 eliminar dependencias
+  await supabase.from("vistas").delete().eq("publicacion_id", id);
+  await supabase.from("comentarios").delete().eq("publicacion_id", id);
+  await supabase.from("likes").delete().eq("publicacion_id", id);
+  await supabase.from("ratings").delete().eq("publicacion_id", id); // 👈 ESTE FALTABA
+
+  // 🔥 ahora sí eliminar publicación
+  const { data, error } = await supabase
+    .from("publicaciones")
+    .delete()
+    .eq("id", id)
+    .select();
+
+  console.log("DELETE DATA:", data);
+  console.log("DELETE ERROR:", error);
+
+  if (error) {
+    console.error("Error eliminando:", error.message);
+    return;
+  }
+
+  console.log("Eliminado correctamente ✅");
+
+  navigate("/");
+};
+
+
+    const confirmarEliminacion = async () => {
+      console.log("USER:", user?.id);
+      console.log("ROL:", miPerfil);
+      console.log("PLANT:", plant);
+
+      if (!plant) 
+        return;
+
+      await eliminarPublicacion(plant.id);
+
+      toast.success("Publicación eliminada 🗑️");
+      navigate("/");
+    };
 
   const eliminarComentario = async (id: string) => {
     const { error } = await supabase
@@ -468,31 +510,46 @@ if (!plant) {
             <ArrowLeft className="w-5 h-5" />
           </button>
           <div className="flex gap-2">
-            <motion.button
-                onClick={() => {
-                  if (!requireAuth()) {
-                    toast.error("Acceso requerido 🔒", {
-                      description: "Debes iniciar sesión para dar like ❤️",
-                    });
-                    return;
-                  }
+                    <motion.button
+            onClick={() => {
+              if (!requireAuth()) {
+                toast.error("Acceso requerido 🔒", {
+                  description: "Debes iniciar sesión para dar like ❤️",
+                });
+                return;
+              }
 
-                  handleLike();
-                }}
-                className="p-2 hover:bg-secondary rounded-full transition-colors"
-                whileTap={{ scale: 0.9 }}
-              >
-                <Heart className={`w-5 h-5 ${isLiked ? 'fill-red-500 text-red-500' : ''}`} />
-              </motion.button>
-            <button className="p-2 hover:bg-secondary rounded-full transition-colors">
-              <Share2 className="w-5 h-5" />
-            </button>
-            <button 
-              onClick={() => setShowReportModal(true)}
-              className="p-2 hover:bg-secondary rounded-full transition-colors"
-            >
+              handleLike();
+            }}
+            className="p-2 hover:bg-secondary rounded-full transition-colors"
+            whileTap={{ scale: 0.9 }}
+          >
+            <Heart className={`w-5 h-5 ${isLiked ? 'fill-red-500 text-red-500' : ''}`} />
+          </motion.button>
+
+          {/* 🔗 SHARE */}
+          <button className="p-2 hover:bg-secondary rounded-full">
+            <Share2 className="w-5 h-5" />
+          </button>
+
+          {/* 🚩 REPORT */}
+          <button 
+            onClick={() => setShowReportModal(true)}
+            className="p-2 hover:bg-secondary rounded-full transition-colors"
+          >
               <Flag className="w-5 h-5" />
-            </button>
+                </button>
+
+                {/* 🗑️ ADMIN */}
+                {miPerfil?.rol === "admin" && (
+                  <button
+                    onClick={() => confirmarEliminacion()}
+                    className="p-2 hover:bg-red-100 rounded-full transition-colors"
+                  >
+                    🗑️
+                  </button>
+              )}
+            
           </div>
         </div>
       </div>
@@ -790,6 +847,20 @@ const esAdmin = miPerfil?.rol === "admin";
           </div>
         </motion.div>
       </div>
+
+      {showDeleteModal && (
+      <div className="modal">
+        <p>¿Eliminar publicación?</p>
+
+        <button onClick={confirmarEliminacion}>
+          Sí, eliminar
+        </button>
+
+        <button onClick={() => setShowDeleteModal(false)}>
+          Cancelar
+        </button>
+      </div>
+    )}
 
                     {/* Report Modal */}
     {showReportModal && (

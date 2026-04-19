@@ -4,7 +4,7 @@ import { motion } from 'motion/react';
 import { useState } from 'react';
 import { useEffect } from "react";
 import { supabase } from "../../lib/supabase";
-
+import { useAuth } from "../contexts/AuthContext";
 interface Notification {
   id: string;
   type: 'comment' | 'like' | 'system';
@@ -17,45 +17,34 @@ interface Notification {
 export default function Notifications() {
   const navigate = useNavigate();
   const [notifications, setNotifications] = useState<any[]>([]);
-  const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-
-  useEffect(() => {
-  const getUser = async () => {
-    const { data } = await supabase.auth.getUser();
-    setUser(data.user);
-  };
-
-  getUser();
-}, []);
+  const { user } = useAuth();
 
 useEffect(() => {
   const fetchNotifications = async () => {
-    setLoading(true); // 🔥 inicia carga
-
-    const { data: userData } = await supabase.auth.getUser();
-    const user = userData.user;
-
     if (!user) {
       setLoading(false);
       return;
     }
+
+    setLoading(true);
 
     const { data, error } = await supabase
       .from("notificaciones")
       .select("*")
       .eq("user_id", user.id)
       .order("created_at", { ascending: false });
+      console.log(error);
 
     if (!error) {
       setNotifications(data || []);
     }
 
-    setLoading(false); // 🔥 termina carga
+    setLoading(false);
   };
 
   fetchNotifications();
-}, []);
+}, [user]);
 
 
 

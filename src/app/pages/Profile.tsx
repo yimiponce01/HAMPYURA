@@ -21,6 +21,7 @@ export default function Profile() {
   const promedioGeneral = userPlants.length > 0 ? totalRatings / userPlants.length : 0;
   const [perfil, setPerfil] = useState<any>(null);
 
+
   useEffect(() => {
     if (!user) return;
 
@@ -131,19 +132,26 @@ export default function Profile() {
     setShowEditModal(true);
   };
 
-const eliminarPublicacion = async (id: string) => {
-  const confirmDelete = confirm("¿Eliminar publicación?");
-  if (!confirmDelete) return;
+  const eliminarPublicacion = async (id: string) => {
+    // borrar dependencias primero
+    await supabase.from("comentarios").delete().eq("publicacion_id", id);
+    await supabase.from("likes").delete().eq("publicacion_id", id);
+    await supabase.from("ratings").delete().eq("publicacion_id", id);
+    await supabase.from("vistas").delete().eq("publicacion_id", id);
+    await supabase.from("notificaciones").delete().eq("publicacion_id", id);
 
-  const { error } = await supabase
-    .from("publicaciones")
-    .delete()
-    .eq("id", id);
+    // ahora sí borrar publicación
+    const { error } = await supabase
+      .from("publicaciones")
+      .delete()
+      .eq("id", id);
 
-  if (!error) {
-    setMisPublicaciones(prev => prev.filter(p => p.id !== id));
-  }
-};
+    if (error) {
+      console.error("Error eliminando:", error);
+    } else {
+      console.log("Publicación eliminada ✅");
+    }
+  };
 
 const confirmarEliminacion = async () => {
   if (!plantToDelete) return;

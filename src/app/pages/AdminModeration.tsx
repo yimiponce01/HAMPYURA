@@ -141,7 +141,7 @@ return (
                     </div>
 
                     {/* TEXTO */}
-                    <div className="p-3">
+                    <div className="p-3 bg-green-800">
                     <h3 className="font-bold text-sm text-black">
                         {post.nombre_planta}
                     </h3>
