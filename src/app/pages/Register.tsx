@@ -85,7 +85,7 @@ export default function Register() {
                 {error}
               </motion.div>
             )}
-
+// CAMBIO PRUEBA YIMI
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label htmlFor="name" className="block mb-2">
