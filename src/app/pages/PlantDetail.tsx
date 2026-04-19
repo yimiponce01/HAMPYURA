@@ -494,7 +494,25 @@ const eliminarPublicacion = async (id: string) => {
     }
   };
 
-  
+    const handleReportar = async () => {
+    if (!user || !plant) return;
+
+    const motivo = "Contenido inapropiado"; // ejemplo
+
+    const { error } = await supabase.from("reportes").insert({
+      publicacion_id: plant.id,
+      usuario_id: user.id,
+      motivo: motivo
+    });
+
+    if (!error) {
+      await supabase.from("notificaciones").insert({
+        actor_id: user.id,
+        tipo: "reporte",
+        publicacion_id: plant.id
+      });
+    }
+  };
 
   const esAdmin = miPerfil?.rol === "admin";
 

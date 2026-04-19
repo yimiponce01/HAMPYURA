@@ -97,18 +97,33 @@ export default function PublishPlant() {
     return;
   }
 
+  
+
     // 🔥 GUARDAR EN BD
-    const { error } = await supabase.from("publicaciones").insert({
+      const { data: nuevaPlanta, error } = await supabase
+    .from("publicaciones")
+    .insert({
       nombre_planta,
       nombre_cientifico,
       descripcion,
       propiedades,
       enfermedades,
       preparacion,
-      imagenes: imageUrls, // ✅ ARRAY
+      imagenes: imageUrls,
       estado: "pendiente",
       user_id: user.id
-    });
+    })
+    .select()
+    .single();
+
+      if (!error && nuevaPlanta && user) {
+      await supabase.from("notificaciones").insert({
+        actor_id: user.id,
+        tipo: "publicacion",
+        publicacion_id: nuevaPlanta.id
+      });
+    }
+
 
     if (error) {
     console.error(error);

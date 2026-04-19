@@ -2,13 +2,82 @@ import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Users, FileText, Flag, BarChart3 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { motion } from 'motion/react';
-import { mockPlants } from '../data/mockData';
+import { useEffect, useState } from "react";
+import { supabase } from "../../lib/supabase";
 
 export default function AdminDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  if (user?.role !== 'admin') {
+const [stats, setStats] = useState({
+  totalUsers: 0,
+  totalPlants: 0,
+  totalReports: 0,
+  activeUsers: 0
+});
+
+useEffect(() => {
+  const fetchStats = async () => {
+
+    // usuarios
+    const { count: usersCount } = await supabase
+      .from("perfiles")
+      .select("*", { count: "exact", head: true });
+
+    // publicaciones
+    const { count: plantsCount } = await supabase
+      .from("publicaciones")
+      .select("*", { count: "exact", head: true });
+
+    // reportes
+    const { count: reportsCount } = await supabase
+      .from("reportes")
+      .select("*", { count: "exact", head: true })
+      .eq("estado", "pendiente");
+
+    // 🔥 ACTIVOS BIEN CALCULADO
+    const { data: notifData } = await supabase
+      .from("notificaciones")
+      .select("actor_id");
+
+    const uniqueUsers = new Set(notifData?.map(n => n.actor_id));
+    const activeUsers = uniqueUsers.size;
+
+    setStats({
+      totalUsers: usersCount || 0,
+      totalPlants: plantsCount || 0,
+      totalReports: reportsCount || 0,
+      activeUsers: activeUsers
+    });
+  };
+
+  fetchStats();
+}, []);
+
+const [actividad, setActividad] = useState<any[]>([]);
+
+  useEffect(() => {
+  const fetchActividad = async () => {
+    const { data, error } = await supabase
+      .from("notificaciones")
+      .select('*,actor:perfiles!notificaciones_actor_id_fkey(nombre)')
+      .in("tipo", ["publicacion", "reporte", "registro"]) // 👈 SOLO ESTOS
+      .order("created_at", { ascending: false })
+      .limit(10);
+
+    if (error) {
+      console.error("Error actividad:", error);
+      return;
+    }
+
+    console.log("ACTIVIDAD:", data); // 👈 DEBUG
+    setActividad(data || []);
+  };
+
+  fetchActividad();
+}, []);
+
+if (user?.role !== 'admin') {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -24,12 +93,7 @@ export default function AdminDashboard() {
     );
   }
 
-  const stats = {
-    totalUsers: 342,
-    totalPlants: mockPlants.length,
-    totalReports: 5,
-    activeUsers: 89
-  };
+    
 
   return (
     <div className="min-h-screen pb-8">
@@ -172,23 +236,18 @@ export default function AdminDashboard() {
         >
           <h3 className="mb-4">Actividad Reciente</h3>
           <div className="space-y-3">
-            {[
-              { user: 'María González', action: 'publicó una nueva planta', time: 'Hace 2 horas' },
-              { user: 'Carlos Ruiz', action: 'reportó contenido', time: 'Hace 4 horas' },
-              { user: 'Ana Torres', action: 'se registró en la plataforma', time: 'Hace 6 horas' },
-              { user: 'Dr. Pedro Sánchez', action: 'publicó un artículo', time: 'Hace 1 día' }
-            ].map((activity, index) => (
-              <div key={index} className="flex items-center justify-between py-3 border-b border-border last:border-0">
-                <div>
-                  <p className="text-sm">
-                    <span className="text-foreground">{activity.user}</span>{' '}
-                    <span className="text-muted-foreground">{activity.action}</span>
+              {actividad.map((a, i) => (
+                <div key={i} className="flex justify-between py-2">
+                  <p>
+                    <b>{a.actor?.nombre || "Usuario"}</b>{ " " }
+                    {a.tipo === "publicacion" && "publicó una planta"}
+                    {a.tipo === "reporte" && "reportó contenido"}
+                    {a.tipo === "registro" && "se registró"}
                   </p>
+                  <span>{new Date(a.created_at).toLocaleString()}</span>
                 </div>
-                <span className="text-sm text-muted-foreground">{activity.time}</span>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
         </motion.div>
       </div>
     </div>
