@@ -4,6 +4,7 @@ import { ArrowLeft, Leaf } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { motion } from 'motion/react';
 import { Eye, EyeOff } from "lucide-react";
+import { supabase } from '../../lib/supabase';
 
 export default function Register() {
   const [name, setName] = useState('');
@@ -17,30 +18,75 @@ export default function Register() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError('');
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setError('');
 
-    if (password !== confirmPassword) {
-      setError('Las contraseñas no coinciden');
+  // 🔥 VALIDACIONES
+  if (password !== confirmPassword) {
+    setError('Las contraseñas no coinciden');
+    return;
+  }
+
+  if (password.length < 6) {
+    setError('La contraseña debe tener al menos 6 caracteres');
+    return;
+  }
+
+  // 🔥 verificar si ya existe el correo
+  const { data: existingUser } = await supabase
+    .from("perfiles")
+    .select("id")
+    .eq("email", email)
+    .single();
+
+  if (existingUser) {
+    setError("Ese correo ya está en uso ❌");
+    return;
+  }
+
+  setIsLoading(true);
+
+  try {
+    // 🔥 1. crear usuario en auth
+    const { data, error: authError } = await supabase.auth.signUp({
+      email: email,
+      password: password
+    });
+
+    if (authError) {
+      setError("Error al registrar en auth ❌");
+      console.error(authError);
       return;
     }
 
-    if (password.length < 6) {
-      setError('La contraseña debe tener al menos 6 caracteres');
+    const user = data.user;
+
+    // 🔥 2. guardar en perfiles
+    const { error: dbError } = await supabase
+      .from("perfiles")
+      .insert({
+        id: user?.id, // 👈 IMPORTANTE (mismo id que auth)
+        nombre: name,
+        email: email
+      });
+
+    if (dbError) {
+      console.error(dbError);
+      setError("Error al guardar perfil ❌");
       return;
     }
 
-    setIsLoading(true);
-    try {
-      await register(name, email, password);
-      navigate('/');
-    } catch (error) {
-      setError('Error al registrarse. Intenta de nuevo.');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    // 🔥 3. redirigir
+    navigate('/login');
+
+  } catch (error) {
+    console.error(error);
+    setError('Error al registrarse. Intenta de nuevo.');
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   return (
     <div className="relative min-h-screen flex items-center justify-center p-4">

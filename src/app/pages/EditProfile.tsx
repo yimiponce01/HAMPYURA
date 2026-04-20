@@ -23,16 +23,37 @@ const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();
   if (!user) return;
 
-  // 🔥 1. actualizar email en auth (IMPORTANTE)
-  const { error: authError } = await supabase.auth.updateUser({
-    email: formData.email
-  });
+  
 
-  if (authError) {
-    console.error(authError);
-    toast.error("Error al actualizar correo ❌");
+    // 🔥 VALIDACIONES
+  if (!formData.name.trim()) {
+    toast.error("El nombre es obligatorio ❌");
     return;
   }
+
+  if (!formData.email.trim()) {
+    toast.error("El correo es obligatorio ❌");
+    return;
+  }
+
+  // 🔥 validar formato básico de email
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(formData.email)) {
+    toast.error("Correo inválido ❌");
+    return;
+  }
+
+const { data: existingUser } = await supabase
+  .from("perfiles")
+  .select("id")
+  .eq("email", formData.email)
+  .single();
+
+if (existingUser && existingUser.id !== user.id) {
+  toast.error("Ese correo ya está en uso ❌");
+  return;
+}
+
 
   // 🔥 2. construir objeto con email incluido
   const updateData: any = {

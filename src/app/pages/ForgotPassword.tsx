@@ -2,22 +2,52 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, CheckCircle, Leaf } from 'lucide-react';
 import { motion } from 'motion/react';
+import { supabase } from '../../lib/supabase';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [step, setStep] = useState(1);
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [secretCode, setSecretCode] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setIsLoading(true);
 
-    // Simulación de envío
-    await new Promise(resolve => setTimeout(resolve, 1000));
+  // 🔥 1. verificar si existe el correo en tu BD
+  const { data, error } = await supabase
+    .from("perfiles")
+    .select("email")
+    .eq("email", email)
+    .single();
 
+  if (error || !data) {
+    alert("El correo no existe ❌");
     setIsLoading(false);
-    setIsSubmitted(true);
-  };
+    return;
+  }
+
+  // 🔥 2. enviar correo de recuperación
+  const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: 'http://localhost:5173/#/reset-password'
+  });
+
+  if (resetError) {
+    console.error(resetError);
+    alert("Error al enviar recuperación ❌");
+    setIsLoading(false);
+    return;
+  }
+
+  // 🔥 3. mostrar mensaje de éxito
+  setIsLoading(false);
+  setIsSubmitted(true);
+};
+
 
   if (isSubmitted) {
     return (

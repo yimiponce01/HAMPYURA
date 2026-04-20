@@ -4,6 +4,8 @@ import { X, Leaf } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { motion } from 'motion/react';
 import { Eye, EyeOff } from "lucide-react";
+import { supabase } from '../../lib/supabase';
+import { toast } from "sonner"; 
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -13,18 +15,31 @@ export default function Login() {
   const navigate = useNavigate();
   const [showPassword, setShowPassword] = useState(false);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    try {
-      await login(email, password);
-      navigate('/');
-    } catch (error) {
-      console.error('Error al iniciar sesión:', error);
-    } finally {
-      setIsLoading(false);
+  
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setIsLoading(true);
+
+  try {
+    await login(email, password); // 👈 usa AuthContext
+    toast.success("Bienvenido a HAMPIYURA🌿");
+    navigate('/');
+
+  } catch (error: any) {
+
+    // 🔥 MENSAJES CLAROS
+    if (error.message.includes("Invalid login credentials")) {
+      toast.error("Correo o contraseña incorrectos ❌");
+    } else if (error.message.includes("Email not confirmed")) {
+      toast.error("Debes confirmar tu correo 📩");
+    } else {
+      toast.error("Error al iniciar sesión ❌");
     }
-  };
+    
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const handleContinueAsVisitor = () => {
     continueAsVisitor();

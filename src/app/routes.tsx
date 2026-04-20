@@ -15,6 +15,7 @@ import NotFound from './pages/NotFound';
 import Layout from './components/Layout';
 import AdminModeration from "./pages/AdminModeration";
 import PlantEdit from './pages/PlantEdit';
+import ResetPassword from './pages/ResetPassword';
 
 
 export const router = createHashRouter([
@@ -49,6 +50,11 @@ export const router = createHashRouter([
     path: '/forgot-password',
     element: <ForgotPassword />,
   },
+
+  {
+    path: '/reset-password',
+    element: <ResetPassword />,
+  }
 
 
 ]);

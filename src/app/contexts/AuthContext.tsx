@@ -66,8 +66,7 @@ password,
 
 
 if (error) {
-  console.error('LOGIN ERROR:', error.message);
-  return;
+  throw new Error(error.message);
 }
 
 if (data.user) {
