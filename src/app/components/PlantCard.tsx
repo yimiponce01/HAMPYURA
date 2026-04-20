@@ -1,13 +1,10 @@
 import { Link } from 'react-router-dom';
 import { Heart, Eye, Star } from "lucide-react";
 import { motion } from 'motion/react';
-import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useEffect } from "react";
 import { supabase } from "../../lib/supabase";
 
-
-// ✅ TYPE ARRIBA
+// ✅ TYPE
 type Plant = {
   id: string;
   nombre_planta: string;
@@ -27,38 +24,49 @@ interface PlantCardProps {
 }
 
 export function PlantCard({ plant }: PlantCardProps) {
-  const { requireAuth } = useAuth();
+  const { userLikes, setUserLikes } = useAuth();
 
-console.log("PROMEDIO:", plant.ratingPromedio);
+  // ✅ estado real del like (rápido y correcto)
+  const isLiked = userLikes.includes(plant.id);
 
-const [isLiked, setIsLiked] = useState(false);
+  // 🔥 LIKE INSTANTÁNEO
+  const toggleLike = async (e: React.MouseEvent) => {
+    window.dispatchEvent(new Event("likesUpdated"));
+    e.preventDefault();
 
-    const checkIfLiked = async () => {
     const { data: userData } = await supabase.auth.getUser();
     const user = userData.user;
 
-    if (!user) return;
+    // ❌ si no está logeado
+    if (!user) {
+      alert("Debes iniciar sesión para dar like ❌");
+      return;
+    }
 
-    const { data } = await supabase
-      .from("likes")
-      .select("*")
-      .eq("user_id", user.id)
-      .eq("publicacion_id", plant.id)
-      .maybeSingle();
+    // ⚡ cambio inmediato (sin delay)
+    if (isLiked) {
+      setUserLikes(prev => prev.filter(id => id !== plant.id));
+    } else {
+      setUserLikes(prev => [...prev, plant.id]);
+    }
 
-    setIsLiked(!!data);
+    try {
+      if (isLiked) {
+        await supabase
+          .from("likes")
+          .delete()
+          .eq("user_id", user.id)
+          .eq("publicacion_id", plant.id);
+      } else {
+        await supabase.from("likes").insert({
+          user_id: user.id,
+          publicacion_id: plant.id
+        });
+      }
+    } catch (error) {
+      console.error("Error en like:", error);
+    }
   };
-  useEffect(() => {
-    checkIfLiked();
-
-    const update = () => {
-      checkIfLiked();
-    };
-
-    window.addEventListener("likeUpdated", update);
-
-    return () => window.removeEventListener("likeUpdated", update);
-  }, []);
 
   return (
     <motion.div
@@ -70,6 +78,7 @@ const [isLiked, setIsLiked] = useState(false);
       <Link to={`/plant/${plant.id}`} className="block">
         <div className="bg-card rounded-2xl overflow-hidden shadow-sm hover:shadow-md transition-shadow border border-border">
           
+          {/* 📷 IMAGEN */}
           <div className="relative h-48 overflow-hidden bg-secondary">
             <img 
               src={plant.imagenes?.[0] || "https://via.placeholder.com/400x300"}
@@ -77,15 +86,26 @@ const [isLiked, setIsLiked] = useState(false);
               className="w-full h-full object-cover"
             />
 
-            <div className="absolute top-3 right-3 bg-white/90 dark:bg-black/90 p-2 rounded-full backdrop-blur-sm">
+            {/* ❤️ LIKE */}
+            <div 
+              onClick={toggleLike}
+              className="absolute top-3 right-3 bg-white/90 dark:bg-black/90 px-3 py-2 rounded-full backdrop-blur-sm flex items-center gap-1 shadow-md cursor-pointer"
+            >
               <Heart
-                className={`w-5 h-5 ${
-                  isLiked ? "fill-red-500 text-red-500" : "text-muted-foreground"
+                className={`w-5 h-5 transition-all duration-100 ${
+                  isLiked
+                    ? "fill-red-500 text-red-500 scale-110"
+                    : "text-muted-foreground"
                 }`}
               />
+
+              <span className="text-xs font-medium text-foreground">
+                {plant.likesCount || 0}
+              </span>
             </div>
           </div>
 
+          {/* 📄 CONTENIDO */}
           <div className="p-4">
             <h3 className="mb-1">{plant.nombre_planta}</h3>
 
@@ -95,36 +115,33 @@ const [isLiked, setIsLiked] = useState(false);
 
             <p className="text-sm text-muted-foreground line-clamp-2 mb-3">
               {plant.descripcion}
-            </p><div className="flex items-center justify-between mt-2 text-sm">
+            </p>
 
-            {/* ⭐ ESTRELLAS */}
-            <div className="flex gap-0.5">
-              {[1,2,3,4,5].map((star) => (
-                <Star
-                  key={star}
-                  className={`w-4 h-4 ${
-                    star <= Math.round(plant.ratingPromedio || 0)
-                      ? "text-yellow-400 fill-yellow-400"
-                      : "text-gray-300"
-                  }`}
-                />
-              ))}
+            <div className="flex items-center justify-between mt-2 text-sm">
+
+              {/* ⭐ RATING */}
+              <div className="flex gap-0.5">
+                {[1,2,3,4,5].map((star) => (
+                  <Star
+                    key={star}
+                    className={`w-4 h-4 ${
+                      star <= Math.round(plant.ratingPromedio || 0)
+                        ? "text-yellow-400 fill-yellow-400"
+                        : "text-gray-300"
+                    }`}
+                  />
+                ))}
+              </div>
+
+              {/* 👁️ VISTAS */}
+              <div className="flex items-center gap-1">
+                <Eye className="w-4 h-4 text-gray-400" />
+                <span>{plant.vistasCount || 0}</span>
+              </div>
+
             </div>
-
-            {/* ❤️ LIKES */}
-            <div className="flex items-center gap-1">
-              <Heart className="w-4 h-4 text-red-500" />
-              <span>{plant.likesCount || 0}</span>
-            </div>
-
-            {/* 👁️ VISTAS */}
-            <div className="flex items-center gap-1">
-              <Eye className="w-4 h-4 text-gray-400" />
-              <span>{plant.vistasCount || 0}</span>
-            </div>
-
           </div>
-            </div>
+
         </div>
       </Link>
     </motion.div>

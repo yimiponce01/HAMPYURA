@@ -269,7 +269,7 @@ useEffect(() => {
             </p>
             <button
               type="button"
-              onClick={() => toast.info("Funcionalidad de cambio de contraseña")}
+              onClick={() => navigate("/forgot-password")}
               className="text-primary hover:underline"
             >
               Cambiar Contraseña

@@ -12,6 +12,7 @@ export default function Home() {
   const [plants, setPlants] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
+  const { reloadLikes } = useAuth();
 
   useEffect(() => {
     const fetchPlants = async () => {
@@ -53,7 +54,7 @@ export default function Home() {
 
     fetchPlants();
 
-
+    reloadLikes();
   }, []);
 
 

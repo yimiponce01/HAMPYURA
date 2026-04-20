@@ -13,15 +13,21 @@ bio?: string;
 }
 
 interface AuthContextType {
-user: User | null;
-isAuthenticated: boolean;
-isVisitor: boolean;
-login: (email: string, password: string) => Promise<void>;
-register: (name: string, email: string, password: string) => Promise<void>;
-logout: () => Promise<void>;
-continueAsVisitor: () => void;
-updateProfile: (data: Partial<User>) => void;
-requireAuth: () => boolean;
+  user: User | null;
+  isAuthenticated: boolean;
+  isVisitor: boolean;
+
+  // 🔥 AGREGA ESTO
+  userLikes: string[];
+  setUserLikes: React.Dispatch<React.SetStateAction<string[]>>;
+
+  login: (email: string, password: string) => Promise<void>;
+  register: (name: string, email: string, password: string) => Promise<void>;
+  logout: () => Promise<void>;
+  continueAsVisitor: () => void;
+  updateProfile: (data: Partial<User>) => void;
+  requireAuth: () => boolean;
+  reloadLikes: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -29,34 +35,56 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
 const [user, setUser] = useState<User | null>(null);
 const [isVisitor, setIsVisitor] = useState(false);
+const [userLikes, setUserLikes] = useState<string[]>([]);
 
 useEffect(() => {
-const getSession = async () => {
-const { data } = await supabase.auth.getSession();
-
-
-  if (data.session?.user) {
-    const user = data.session.user;
+  const loadUserData = async (sessionUser: any) => {
+    if (!sessionUser) {
+      setUser(null);
+      setUserLikes([]);
+      return;
+    }
 
     const { data: perfil } = await supabase
       .from('perfiles')
       .select('*')
-      .eq('id', user.id)
+      .eq('id', sessionUser.id)
       .single();
 
     setUser({
-      id: user.id,
+      id: sessionUser.id,
       name: perfil?.nombre || 'Usuario',
-      email: user.email || '',
+      email: sessionUser.email || '',
       role: perfil?.rol || 'user',
     });
-  }
-};
 
-getSession();
+    // 🔥 traer likes actualizados SIEMPRE
+    const { data: likes } = await supabase
+      .from("likes")
+      .select("publicacion_id")
+      .eq("user_id", sessionUser.id);
 
+    setUserLikes(likes?.map(l => l.publicacion_id) || []);
+  };
 
+  // 🔥 1. cargar sesión actual
+  supabase.auth.getSession().then(({ data }) => {
+    loadUserData(data.session?.user);
+  });
+
+  // 🔥 2. escuchar cambios (LOGIN / LOGOUT / RESET PASSWORD)
+  const { data: listener } = supabase.auth.onAuthStateChange(
+    (_event, session) => {
+      loadUserData(session?.user);
+    }
+  );
+
+  return () => {
+    listener.subscription.unsubscribe();
+  };
 }, []);
+
+
 
 const login = async (email: string, password: string) => {
 const { data, error } = await supabase.auth.signInWithPassword({
@@ -156,19 +184,42 @@ const requireAuth = () => {
 return !!(user && user.role !== 'visitor');
 };
 
+const reloadLikes = async () => {
+  const { data: userData } = await supabase.auth.getUser();
+  const user = userData.user;
+
+  if (!user) {
+    setUserLikes([]);
+    return;
+  }
+
+  const { data: likes } = await supabase
+    .from("likes")
+    .select("publicacion_id")
+    .eq("user_id", user.id);
+
+  setUserLikes(likes?.map(l => l.publicacion_id) || []);
+};
+
 return (
 <AuthContext.Provider
-  value={{
+value={{
   user,
   isAuthenticated: !!user,
   isVisitor,
+
+  // 🔥 AGREGA ESTO
+  userLikes,
+  setUserLikes,
+
   login,
   register,
   logout,
   continueAsVisitor,
   updateProfile,
   requireAuth,
-  }}
+  reloadLikes,
+}}
   >
   {children}
   </AuthContext.Provider>
