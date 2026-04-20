@@ -239,7 +239,9 @@ const confirmarEliminacion = async () => {
             </div>
             <div>
               <h2 className="mb-1">{perfil?.nombre || user.name}</h2>
-              <p className="text-primary-foreground/80">{user.email}</p>
+              <p className="text-primary-foreground/80">
+                {perfil?.email || user.email}
+              </p>
               {user.role === 'admin' && (
                 <span className="inline-block mt-2 px-3 py-1 bg-white/20 rounded-full text-sm">
                   Administrador

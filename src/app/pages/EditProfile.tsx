@@ -19,15 +19,27 @@ export default function EditProfile() {
     avatar: user?.avatar || ''
   });
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user) return;
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  if (!user) return;
 
-      // 🔥 construir objeto dinámico
-    const updateData: any = {
-      nombre: formData.name,
-      bio: formData.bio,
-    };
+  // 🔥 1. actualizar email en auth (IMPORTANTE)
+  const { error: authError } = await supabase.auth.updateUser({
+    email: formData.email
+  });
+
+  if (authError) {
+    console.error(authError);
+    toast.error("Error al actualizar correo ❌");
+    return;
+  }
+
+  // 🔥 2. construir objeto con email incluido
+  const updateData: any = {
+    nombre: formData.name,
+    bio: formData.bio,
+    email: formData.email, // 👈 ESTA LÍNEA ES LA CLAVE
+  };
 
     // ✅ SOLO actualizar región si tiene valor
     if (formData.region && formData.region !== '') {
