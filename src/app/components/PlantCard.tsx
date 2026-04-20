@@ -1,8 +1,9 @@
 import { Link } from 'react-router-dom';
 import { Heart, Eye, Star } from "lucide-react";
-import { motion } from 'motion/react';
+import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { supabase } from "../../lib/supabase";
+import { motion } from "framer-motion";
 
 // ✅ TYPE
 type Plant = {
@@ -28,6 +29,7 @@ export function PlantCard({ plant }: PlantCardProps) {
 
   // ✅ estado real del like (rápido y correcto)
   const isLiked = userLikes.includes(plant.id);
+  const [likesCount, setLikesCount] = useState(plant.likesCount || 0);
 
   // 🔥 LIKE INSTANTÁNEO
   const toggleLike = async (e: React.MouseEvent) => {
@@ -46,8 +48,10 @@ export function PlantCard({ plant }: PlantCardProps) {
     // ⚡ cambio inmediato (sin delay)
     if (isLiked) {
       setUserLikes(prev => prev.filter(id => id !== plant.id));
+      setLikesCount((prev: number) => prev - 1); // 🔥 RESTA
     } else {
       setUserLikes(prev => [...prev, plant.id]);
+      setLikesCount((prev: number) => prev + 1); // 🔥 SUMA
     }
 
     try {
@@ -100,7 +104,7 @@ export function PlantCard({ plant }: PlantCardProps) {
               />
 
               <span className="text-xs font-medium text-foreground">
-                {plant.likesCount || 0}
+                {likesCount}
               </span>
             </div>
           </div>
