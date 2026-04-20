@@ -1,9 +1,9 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Leaf, Eye, EyeOff } from "lucide-react";
 import { motion } from 'motion/react';
 import { supabase } from '../../lib/supabase';
 import { toast } from "sonner";
+import { useState, useEffect } from 'react';
 
 export default function ResetPassword() {
 
@@ -14,6 +14,51 @@ export default function ResetPassword() {
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
     const navigate = useNavigate();
+
+    useEffect(() => {
+    const handleSession = async () => {
+        const hash = window.location.hash;
+
+        if (!hash) return;
+
+        // 🔥 FIX: manejar doble #
+        const hashParts = hash.split('#');
+
+        // siempre el token está al final
+        const tokenString = hashParts[hashParts.length - 1];
+
+        const params = new URLSearchParams(tokenString);
+
+        const access_token = params.get("access_token");
+        const refresh_token = params.get("refresh_token");
+
+        if (!access_token || !refresh_token) {
+        console.error("No hay tokens en URL ❌");
+        console.log("HASH:", hash); // 🔍 debug
+        return;
+        }
+
+        // 🔥 1. CREAR SESIÓN
+        const { error } = await supabase.auth.setSession({
+        access_token,
+        refresh_token,
+        });
+
+        if (error) {
+        console.error("Error seteando sesión:", error);
+        return;
+        }
+
+        console.log("Sesión restaurada ✅");
+
+        // 🔥 2. VERIFICAR
+        const { data } = await supabase.auth.getSession();
+        console.log("SESSION:", data);
+    };
+
+    handleSession();
+    }, []);
+
 
     const handleChangePassword = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -56,6 +101,8 @@ export default function ResetPassword() {
         navigate('/login');
         }, 1500);
     };
+
+    
 
     return (
         <div className="relative min-h-screen flex items-center justify-center p-4">

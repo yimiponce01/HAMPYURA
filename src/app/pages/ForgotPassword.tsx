@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { ArrowLeft, CheckCircle, Leaf } from 'lucide-react';
 import { motion } from 'motion/react';
 import { supabase } from '../../lib/supabase';
+import { useEffect } from 'react';
 
 export default function ForgotPassword() {
   const [email, setEmail] = useState('');
@@ -13,6 +14,7 @@ export default function ForgotPassword() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
   const [secretCode, setSecretCode] = useState('');
+
 
 const handleSubmit = async (e: React.FormEvent) => {
   e.preventDefault();

@@ -16,6 +16,7 @@ import Layout from './components/Layout';
 import AdminModeration from "./pages/AdminModeration";
 import PlantEdit from './pages/PlantEdit';
 import ResetPassword from './pages/ResetPassword';
+import AdminReports from "./pages/AdminReports";
 
 
 export const router = createHashRouter([
@@ -34,6 +35,7 @@ export const router = createHashRouter([
       { path: 'admin', element: <AdminDashboard /> },
       { path: 'notifications', element: <Notifications /> },
       { path: "admin/moderacion", element: <AdminModeration /> },
+      { path: "admin/reportes", element: <AdminReports /> },
       { path: '*', element: <NotFound /> },
     ],
   },
@@ -55,6 +57,5 @@ export const router = createHashRouter([
     path: '/reset-password',
     element: <ResetPassword />,
   }
-
 
 ]);

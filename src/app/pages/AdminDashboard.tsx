@@ -5,6 +5,7 @@ import { motion } from 'motion/react';
 import { useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
 
+
 export default function AdminDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -220,7 +221,10 @@ if (user?.role !== 'admin') {
               <p className="text-muted-foreground mb-4">
                 Revisa y resuelve reportes de contenido inapropiado
               </p>
-              <button className="w-full bg-primary text-primary-foreground py-2 rounded-xl hover:opacity-90 transition-opacity">
+              <button
+                onClick={() => navigate("/admin/reportes")}
+                className="w-full bg-primary text-primary-foreground py-2 rounded-xl hover:opacity-90 transition-opacity"
+              >
                 Ver Reportes
               </button>
             </div>

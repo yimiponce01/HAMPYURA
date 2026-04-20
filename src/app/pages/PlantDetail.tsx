@@ -512,42 +512,46 @@ const handleRate = async (rating: number) => {
   };
 
 const handleReportar = async (motivo: string) => {
-  if (!user || !plant) return;
 
+  // 🔥 VALIDACIÓN REAL (AQUÍ VA)
+  const { data: userData } = await supabase.auth.getUser();
+  const currentUser = userData.user;
+
+  if (!currentUser) {
+    toast.error("Debes iniciar sesión para reportar 🚫");
+    return;
+  }
+
+  if (!plant) return;
+
+  // 🔴 INSERT REAL (ESTO YA LO TENÍAS BIEN)
   const { error } = await supabase.from("reportes").insert({
     publicacion_id: plant.id,
-    usuario_id: user.id,
+    usuario_id: currentUser.id,
     motivo,
     estado: "pendiente"
   });
 
   if (error) {
-    console.error(error);
+    console.error("ERROR REPORTE:", error);
+    toast.error("Error al enviar reporte ❌");
     return;
   }
 
-  // 🔥 dueño de la planta
-  const { data: plantaOwner } = await supabase
-    .from("publicaciones")
-    .select("user_id")
-    .eq("id", plant.id)
-    .single();
-
-  if (plantaOwner) {
+  // 🔔 NOTIFICACIÓN (NO TOCAR)
+  if (plant.user_id !== currentUser.id) {
     await supabase.from("notificaciones").insert({
-      actor_id: user.id,
-      user_id: plantaOwner.user_id,
+      actor_id: currentUser.id,
+      user_id: plant.user_id,
       tipo: "reporte",
       publicacion_id: plant.id
     });
   }
 
-  // 🔥 MENSAJE
   toast.success("Reporte enviado correctamente ✅", {
-  description: "Gracias por ayudarnos a mantener la comunidad segura 🌿"
-});
+    description: "Gracias por ayudar 🌿"
+  });
 
-  // 🔥 cerrar modal
   setShowReportModal(false);
 };
 
